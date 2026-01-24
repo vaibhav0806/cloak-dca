@@ -7,10 +7,7 @@
   ],
   "functions": {
     "api/**": {
-      "includeFiles": [
-        "node_modules/privacycash/**/*",
-        "node_modules/@lightprotocol/**/*"
-      ],
+      "includeFiles": "node_modules/{privacycash,@lightprotocol}/**/*",
       "maxDuration": 60
     }
   }
