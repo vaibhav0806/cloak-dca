@@ -6,9 +6,8 @@
  */
 
 export async function register() {
-  // Temporarily disabled to debug 502 errors
-  // if (process.env.NEXT_RUNTIME === 'nodejs') {
-  //   const { startKeeperCron } = await import('@/lib/keeper-cron');
-  //   startKeeperCron();
-  // }
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { startKeeperCron } = await import('@/lib/keeper-cron');
+    startKeeperCron();
+  }
 }
