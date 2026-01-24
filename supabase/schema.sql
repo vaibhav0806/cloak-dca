@@ -8,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE users (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     wallet_address TEXT UNIQUE NOT NULL,
+    session_keypair TEXT, -- Base64 encoded session keypair (persistent across devices)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -22,7 +23,7 @@ CREATE TABLE dca_configs (
     frequency_hours INTEGER NOT NULL,
     total_trades INTEGER NOT NULL,
     completed_trades INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed', 'cancelled')),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'paused', 'completed', 'cancelled', 'executing')),
     encrypted_data TEXT,
     next_execution TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

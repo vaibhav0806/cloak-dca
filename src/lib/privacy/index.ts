@@ -126,9 +126,53 @@ class ClientPrivacyClient {
   private sessionKeypairPromise: Promise<Keypair> | null = null;
 
   /**
+   * Fetch session keypair from database
+   */
+  private async fetchSessionFromDatabase(walletAddress: string): Promise<Keypair | null> {
+    try {
+      const response = await fetch('/api/session', {
+        method: 'GET',
+        headers: {
+          'x-wallet-address': walletAddress,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.sessionKeypair) {
+          const secretKey = Buffer.from(data.sessionKeypair, 'base64');
+          return Keypair.fromSecretKey(new Uint8Array(secretKey));
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch session from database:', error);
+    }
+    return null;
+  }
+
+  /**
+   * Save session keypair to database
+   */
+  private async saveSessionToDatabase(walletAddress: string, keypair: Keypair): Promise<void> {
+    try {
+      const sessionKeypairBase64 = Buffer.from(keypair.secretKey).toString('base64');
+      await fetch('/api/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': walletAddress,
+        },
+        body: JSON.stringify({ sessionKeypairBase64 }),
+      });
+    } catch (error) {
+      console.warn('Failed to save session to database:', error);
+    }
+  }
+
+  /**
    * Get or create a session keypair for DCA operations
-   * Uses localStorage caching to avoid repeated signature requests
-   * Uses promise-based locking to prevent concurrent signature requests
+   * Priority: 1. In-memory cache, 2. Database, 3. localStorage, 4. New signature
+   * Saves to database for cross-device consistency
    */
   async getSessionKeypair(): Promise<Keypair> {
     if (!this.config) {
@@ -140,13 +184,7 @@ class ClientPrivacyClient {
       return this.sessionKeypair;
     }
 
-    // Try to restore from localStorage
     const walletAddress = this.config.wallet.publicKey.toBase58();
-    const cachedSignature = getCachedSessionSignature(walletAddress);
-    if (cachedSignature) {
-      this.sessionKeypair = deriveSessionKeypair(cachedSignature);
-      return this.sessionKeypair;
-    }
 
     // If a request is already in progress, wait for it
     if (this.sessionKeypairPromise) {
@@ -155,13 +193,36 @@ class ClientPrivacyClient {
 
     // Start the request and store the promise
     this.sessionKeypairPromise = (async () => {
+      // 1. Try to fetch from database (cross-device persistent)
+      const dbKeypair = await this.fetchSessionFromDatabase(walletAddress);
+      if (dbKeypair) {
+        this.sessionKeypair = dbKeypair;
+        // Also cache in localStorage for faster subsequent loads
+        cacheSessionSignature(walletAddress, dbKeypair.secretKey);
+        return dbKeypair;
+      }
+
+      // 2. Try to restore from localStorage (same-device cache)
+      const cachedSignature = getCachedSessionSignature(walletAddress);
+      if (cachedSignature) {
+        // This is a legacy cache - migrate it to database
+        this.sessionKeypair = deriveSessionKeypair(cachedSignature);
+        await this.saveSessionToDatabase(walletAddress, this.sessionKeypair);
+        return this.sessionKeypair;
+      }
+
+      // 3. No existing session - create new one from signature
       const message = new TextEncoder().encode(SESSION_KEYPAIR_MESSAGE);
       const signature = await this.config!.wallet.signMessage(message);
 
-      // Cache the signature in localStorage for future sessions
+      this.sessionKeypair = deriveSessionKeypair(signature);
+
+      // Save to database for cross-device access
+      await this.saveSessionToDatabase(walletAddress, this.sessionKeypair);
+
+      // Also cache in localStorage
       cacheSessionSignature(walletAddress, signature);
 
-      this.sessionKeypair = deriveSessionKeypair(signature);
       return this.sessionKeypair;
     })();
 
