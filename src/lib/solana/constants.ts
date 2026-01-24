@@ -27,14 +27,14 @@ export const TOKENS = {
     name: 'Coinbase Wrapped BTC',
     mint: 'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',
     decimals: 8,
-    logoURI: 'https://assets.coingecko.com/coins/images/40141/standard/cbbtc.webp',
+    logoURI: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
   },
   ZEC: {
     symbol: 'ZEC',
     name: 'Zcash',
     mint: 'A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS',
     decimals: 8,
-    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS/logo.png',
+    logoURI: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1437.png',
   },
 } as const;
 
