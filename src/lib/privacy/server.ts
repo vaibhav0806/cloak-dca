@@ -46,6 +46,31 @@ export class PrivacyCashServer {
    */
   async initialize(): Promise<void> {
     try {
+      const fs = await import('fs');
+      const path = await import('path');
+
+      // On Vercel, we need to use /tmp for any file operations
+      // The SDK uses node-localstorage which creates a 'cache' folder in cwd
+      if (process.env.VERCEL) {
+        // Create the cache directory in /tmp
+        const tmpCacheDir = '/tmp/cache';
+        if (!fs.existsSync(tmpCacheDir)) {
+          fs.mkdirSync(tmpCacheDir, { recursive: true });
+        }
+
+        // Also create subdirectories the SDK might expect
+        const fetchOffsetDir = '/tmp/cache';
+        ['fetch_offset', 'utxo_cache'].forEach(subdir => {
+          const dir = path.join(fetchOffsetDir, subdir);
+          if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+          }
+        });
+
+        // Change to /tmp so the SDK creates its cache there
+        process.chdir('/tmp');
+      }
+
       // Dynamic import to avoid bundling issues
       const { PrivacyCash } = await import('privacycash');
 
