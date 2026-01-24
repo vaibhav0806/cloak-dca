@@ -186,28 +186,48 @@ export async function GET(request: NextRequest) {
         const inputDecimals = inputMint === SOL_MINT ? 9 : 6;
         const inputAmount = Math.floor(Number(dca.amount_per_trade) * Math.pow(10, inputDecimals));
 
-        // Step 1: Withdraw from Privacy Cash (unshield input tokens)
-        console.log(`Withdrawing ${dca.amount_per_trade} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} from Privacy Cash`);
-
-        let withdrawResult;
-        try {
-          if (inputMint === SOL_MINT) {
-            withdrawResult = await privacyClient.withdrawSOL(inputAmount, sessionPublicKey.toBase58());
-          } else if (inputMint === USDC_MINT) {
-            withdrawResult = await privacyClient.withdrawUSDC(inputAmount, sessionPublicKey.toBase58());
-          } else {
-            withdrawResult = await privacyClient.withdrawSPL(inputMint, inputAmount, sessionPublicKey.toBase58());
+        // Check if session wallet already has enough tokens (from previous failed attempt)
+        let existingBalance = 0;
+        if (inputMint !== SOL_MINT) {
+          try {
+            const inputMintPubkey = new PublicKey(inputMint);
+            const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
+            const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
+            existingBalance = Number(tokenAccountInfo.value.amount);
+            console.log(`Existing ${inputMint === USDC_MINT ? 'USDC' : 'token'} balance in session wallet: ${tokenAccountInfo.value.uiAmount}`);
+          } catch {
+            // No existing balance
           }
-          console.log(`Withdrawal tx: ${withdrawResult.tx}`);
-          console.log(`Withdrawal result:`, JSON.stringify(withdrawResult, null, 2));
+        }
 
-          // Wait for withdrawal to confirm before swapping
-          console.log('Waiting for withdrawal confirmation...');
-          await confirmTransactionPolling(connection, withdrawResult.tx, 30, 1000);
-          console.log('Withdrawal confirmed');
-        } catch (withdrawError) {
-          console.error(`Withdrawal failed for DCA ${dca.id}:`, withdrawError);
-          throw new Error(`Privacy Cash withdrawal failed: ${withdrawError instanceof Error ? withdrawError.message : 'Unknown error'}`);
+        // Only withdraw if we don't have enough already
+        const minimumRequired = Math.floor(inputAmount * 0.1); // At least 10% of target
+        if (existingBalance >= minimumRequired) {
+          console.log(`Using existing balance (${existingBalance / Math.pow(10, inputDecimals)}), skipping withdrawal to save fees`);
+        } else {
+          // Step 1: Withdraw from Privacy Cash (unshield input tokens)
+          console.log(`Withdrawing ${dca.amount_per_trade} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} from Privacy Cash`);
+
+          let withdrawResult;
+          try {
+            if (inputMint === SOL_MINT) {
+              withdrawResult = await privacyClient.withdrawSOL(inputAmount, sessionPublicKey.toBase58());
+            } else if (inputMint === USDC_MINT) {
+              withdrawResult = await privacyClient.withdrawUSDC(inputAmount, sessionPublicKey.toBase58());
+            } else {
+              withdrawResult = await privacyClient.withdrawSPL(inputMint, inputAmount, sessionPublicKey.toBase58());
+            }
+            console.log(`Withdrawal tx: ${withdrawResult.tx}`);
+            console.log(`Withdrawal result:`, JSON.stringify(withdrawResult, null, 2));
+
+            // Wait for withdrawal to confirm before swapping
+            console.log('Waiting for withdrawal confirmation...');
+            await confirmTransactionPolling(connection, withdrawResult.tx, 30, 1000);
+            console.log('Withdrawal confirmed');
+          } catch (withdrawError) {
+            console.error(`Withdrawal failed for DCA ${dca.id}:`, withdrawError);
+            throw new Error(`Privacy Cash withdrawal failed: ${withdrawError instanceof Error ? withdrawError.message : 'Unknown error'}`);
+          }
         }
 
         // Check session wallet has enough SOL for transaction fees
@@ -218,19 +238,31 @@ export async function GET(request: NextRequest) {
           throw new Error(`Insufficient SOL for transaction fees. Session wallet has ${sessionBalance / 1e9} SOL, needs at least 0.005 SOL`);
         }
 
-        // Check input token balance in session wallet
+        // Check input token balance in session wallet and use actual available amount
+        let actualInputAmount = inputAmount;
         if (inputMint !== SOL_MINT) {
           try {
             const inputMintPubkey = new PublicKey(inputMint);
             const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
             const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
+            const availableBalance = Number(tokenAccountInfo.value.amount);
             console.log(`Session wallet ${inputMint === USDC_MINT ? 'USDC' : 'token'} balance: ${tokenAccountInfo.value.uiAmount}`);
 
-            if (Number(tokenAccountInfo.value.amount) < inputAmount) {
-              throw new Error(`Insufficient input token balance. Have ${tokenAccountInfo.value.uiAmount}, need ${dca.amount_per_trade}`);
+            // Use whatever is available in the session wallet
+            if (availableBalance < inputAmount) {
+              console.log(`Privacy Cash fees reduced balance. Expected ${dca.amount_per_trade}, have ${tokenAccountInfo.value.uiAmount}`);
+
+              // Minimum viable swap: at least 0.1 USDC (100000 base units)
+              if (availableBalance < 100000) {
+                throw new Error(`Balance too low after fees. Have ${tokenAccountInfo.value.uiAmount}, minimum is 0.1 USDC`);
+              }
+
+              actualInputAmount = availableBalance;
+              console.log(`Using available balance: ${actualInputAmount / Math.pow(10, inputDecimals)} for swap`);
             }
           } catch (tokenError) {
-            if ((tokenError as Error).message.includes('Insufficient')) {
+            if ((tokenError as Error).message.includes('Balance too low') ||
+                (tokenError as Error).message.includes('Insufficient')) {
               throw tokenError;
             }
             console.log(`Could not check token balance (ATA may not exist): ${(tokenError as Error).message}`);
@@ -238,17 +270,18 @@ export async function GET(request: NextRequest) {
         }
 
         // Step 2: Swap via Jupiter
-        console.log(`Swapping ${dca.amount_per_trade} ${inputMint} → ${outputMint}`);
+        const actualInputDecimal = actualInputAmount / Math.pow(10, inputDecimals);
+        console.log(`Swapping ${actualInputDecimal} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} → ${outputMint === SOL_MINT ? 'SOL' : outputMint}`);
 
         let swapSignature: string;
         let outputAmount: number;
 
         try {
-          // Get swap quote
+          // Get swap quote with actual available amount
           const quote = await getQuote({
             inputMint,
             outputMint,
-            amount: inputAmount,
+            amount: actualInputAmount,
             slippageBps: 100, // 1% slippage for better success rate
           });
 
@@ -348,7 +381,7 @@ export async function GET(request: NextRequest) {
             status: 'partial',
             trade: newCompletedTrades,
             txSignature: swapSignature,
-            inputAmount: dca.amount_per_trade,
+            inputAmount: actualInputAmount / Math.pow(10, inputDecimals),
             outputAmount: outputAmountDecimal,
             warning: 'Swap succeeded but re-shielding failed. Tokens in session wallet.',
           });
@@ -393,7 +426,7 @@ export async function GET(request: NextRequest) {
           status: 'success',
           trade: newCompletedTrades,
           txSignature: swapSignature,
-          inputAmount: dca.amount_per_trade,
+          inputAmount: actualInputAmount / Math.pow(10, inputDecimals),
           outputAmount: outputAmountDecimal,
         });
 
