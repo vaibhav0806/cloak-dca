@@ -28,6 +28,9 @@ import {
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo } from '@/types';
 
+// Privacy Cash has a minimum withdrawal of ~1 USDC to prevent correlation attacks
+const MIN_AMOUNT_PER_TRADE = 1;
+
 export function CreateDCAModal() {
   const { isCreateModalOpen, setCreateModalOpen } = useAppStore();
   const { createDCA } = useDCAConfigs();
@@ -68,6 +71,10 @@ export function CreateDCAModal() {
     }
     if (isNaN(perTrade) || perTrade <= 0) {
       setError('Enter valid amount per trade');
+      return;
+    }
+    if (perTrade < MIN_AMOUNT_PER_TRADE) {
+      setError(`Minimum ${MIN_AMOUNT_PER_TRADE} ${inputToken.symbol} per trade`);
       return;
     }
     if (perTrade > total) {
@@ -192,11 +199,13 @@ export function CreateDCAModal() {
               <label className="text-label block mb-2">Per Trade</label>
               <Input
                 type="number"
-                placeholder="100"
+                placeholder="10"
+                min={MIN_AMOUNT_PER_TRADE}
                 value={amountPerTrade}
                 onChange={(e) => setAmountPerTrade(e.target.value)}
                 className="text-mono bg-muted border-border"
               />
+              <p className="text-xs text-muted-foreground mt-1">Min: {MIN_AMOUNT_PER_TRADE} {inputToken?.symbol || 'USDC'}</p>
             </div>
           </div>
 
