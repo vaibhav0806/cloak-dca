@@ -320,19 +320,92 @@ export async function GET(request: NextRequest) {
         }
 
         // Step 3: Deposit output to Privacy Cash (shield output tokens)
-        // Use retry logic since blockhash can expire
-        console.log(`Depositing output to Privacy Cash`);
+        // Check actual balance received (may differ from quote due to slippage)
+        let actualOutputAmount = outputAmount;
+        if (outputMint === SOL_MINT) {
+          // Get actual SOL balance and calculate how much we received from the swap
+          const postSwapBalance = await connection.getBalance(sessionPublicKey);
+          // Keep some SOL for future transaction fees (0.005 SOL)
+          const reserveForFees = 5000000;
+          const availableToShield = postSwapBalance - reserveForFees;
+
+          if (availableToShield > 0) {
+            actualOutputAmount = availableToShield;
+            console.log(`Actual SOL available to shield: ${actualOutputAmount / 1e9} SOL (keeping 0.005 SOL for fees)`);
+          } else {
+            console.log(`Not enough SOL to shield after reserving fees. Balance: ${postSwapBalance / 1e9} SOL`);
+            // Skip re-shielding but still count as success since swap worked
+            actualOutputAmount = 0;
+          }
+        } else {
+          // For tokens, check actual token balance
+          try {
+            const outputMintPubkey = new PublicKey(outputMint);
+            const outputAta = await getAssociatedTokenAddress(outputMintPubkey, sessionPublicKey);
+            const outputTokenInfo = await connection.getTokenAccountBalance(outputAta);
+            actualOutputAmount = Number(outputTokenInfo.value.amount);
+            console.log(`Actual token balance to shield: ${outputTokenInfo.value.uiAmount}`);
+          } catch {
+            console.log(`Could not check output token balance, using quote amount`);
+          }
+        }
+
+        // Skip re-shielding if nothing to shield
+        if (actualOutputAmount <= 0) {
+          console.log(`Skipping re-shield (nothing to deposit), marking trade as complete`);
+
+          const outputDecimals = outputMint === SOL_MINT ? 9 : 6;
+          const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
+
+          await supabase
+            .from('executions')
+            .update({
+              status: 'success',
+              tx_signature: swapSignature,
+              output_amount: outputAmountDecimal,
+              error_message: 'Re-shield skipped (insufficient balance after fees)',
+            })
+            .eq('id', execution.id);
+
+          const newCompletedTrades = dca.completed_trades + 1;
+          const isCompleted = newCompletedTrades >= dca.total_trades;
+
+          await supabase
+            .from('dca_configs')
+            .update({
+              completed_trades: newCompletedTrades,
+              status: isCompleted ? 'completed' : 'active',
+              next_execution: isCompleted ? null : addHours(now, dca.frequency_hours).toISOString(),
+              updated_at: now.toISOString(),
+            })
+            .eq('id', dca.id);
+
+          results.push({
+            id: dca.id,
+            status: 'success',
+            trade: newCompletedTrades,
+            txSignature: swapSignature,
+            inputAmount: actualInputAmount / Math.pow(10, inputDecimals),
+            outputAmount: outputAmountDecimal,
+            note: 'Re-shield skipped, output in session wallet',
+          });
+
+          console.log(`Executed trade ${newCompletedTrades}/${dca.total_trades} for DCA ${dca.id} (no re-shield)`);
+          continue;
+        }
+
+        console.log(`Depositing ${actualOutputAmount / (outputMint === SOL_MINT ? 1e9 : 1e6)} to Privacy Cash`);
 
         let depositResult;
         try {
           depositResult = await withRetry(
             async () => {
               if (outputMint === SOL_MINT) {
-                return await privacyClient.depositSOL(outputAmount);
+                return await privacyClient.depositSOL(actualOutputAmount);
               } else if (outputMint === USDC_MINT) {
-                return await privacyClient.depositUSDC(outputAmount);
+                return await privacyClient.depositUSDC(actualOutputAmount);
               } else {
-                return await privacyClient.depositSPL(outputMint, outputAmount);
+                return await privacyClient.depositSPL(outputMint, actualOutputAmount);
               }
             },
             3, // max 3 retries
