@@ -22,15 +22,31 @@ export const TOKENS = {
     decimals: 6,
     logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.svg',
   },
+  cbBTC: {
+    symbol: 'cbBTC',
+    name: 'Coinbase Wrapped BTC',
+    mint: 'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',
+    decimals: 8,
+    logoURI: 'https://assets.coingecko.com/coins/images/40141/standard/cbbtc.webp',
+  },
+  ZEC: {
+    symbol: 'ZEC',
+    name: 'Zcash',
+    mint: 'A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS',
+    decimals: 8,
+    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS/logo.png',
+  },
 } as const;
 
 export const SUPPORTED_INPUT_TOKENS = [TOKENS.USDC, TOKENS.USDT];
-export const SUPPORTED_OUTPUT_TOKENS = [TOKENS.SOL, TOKENS.USDC];
+export const SUPPORTED_OUTPUT_TOKENS = [TOKENS.SOL, TOKENS.cbBTC, TOKENS.ZEC];
 
 // Mint addresses for easy reference
 export const SOL_MINT = TOKENS.SOL.mint;
 export const USDC_MINT = TOKENS.USDC.mint;
 export const USDT_MINT = TOKENS.USDT.mint;
+export const CBBTC_MINT = TOKENS.cbBTC.mint;
+export const ZEC_MINT = TOKENS.ZEC.mint;
 
 export const DEVNET_TOKENS = {
   SOL: {
