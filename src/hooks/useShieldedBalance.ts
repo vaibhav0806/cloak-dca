@@ -20,6 +20,15 @@ export function useShieldedBalance() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const hasInitialized = useRef(false);
+  const isMounted = useRef(true);
+
+  // Track mounted state
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Initialize privacy client when wallet connects (only once per wallet)
   useEffect(() => {
@@ -35,19 +44,23 @@ export function useShieldedBalance() {
           },
         });
         hasInitialized.current = true;
-        setIsInitialized(true);
-        setInitError(null);
+        if (isMounted.current) {
+          setIsInitialized(true);
+          setInitError(null);
+        }
       } catch (error) {
         console.error('Failed to initialize privacy client:', error);
-        setInitError('Failed to initialize privacy client');
-        setIsInitialized(false);
+        if (isMounted.current) {
+          setInitError('Failed to initialize privacy client');
+          setIsInitialized(false);
+        }
       }
     }
 
     // Reset when wallet disconnects
     if (!connected && hasInitialized.current) {
       hasInitialized.current = false;
-      setIsInitialized(false);
+      if (isMounted.current) setIsInitialized(false);
       resetPrivacyClient();
     }
   }, [connected, publicKey, signTransaction, signAllTransactions, signMessage]);
@@ -120,6 +133,7 @@ export function useShieldedBalance() {
   return {
     balances: shieldedBalances,
     isLoading: isLoadingBalances,
+    hasFetched: hasFetchedBalances,
     isInitialized,
     initError,
     fetchBalances,

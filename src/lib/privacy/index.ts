@@ -15,6 +15,9 @@ export const PRIVACY_CASH_SIGN_MESSAGE = 'Privacy Money account sign in';
 // Session keypair derivation message
 export const SESSION_KEYPAIR_MESSAGE = 'Cloak Session Key Derivation';
 
+// LocalStorage key prefix for session signatures
+const SESSION_STORAGE_KEY_PREFIX = 'cloak_session_';
+
 /**
  * Derives a deterministic session keypair from a wallet signature
  * This keypair is used for DCA operations without exposing the main wallet
@@ -23,6 +26,49 @@ export function deriveSessionKeypair(signature: Uint8Array): Keypair {
   // Use first 32 bytes of signature as seed for session keypair
   const seed = signature.slice(0, 32);
   return Keypair.fromSeed(seed);
+}
+
+/**
+ * Get cached session signature from localStorage
+ */
+function getCachedSessionSignature(walletAddress: string): Uint8Array | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const cached = localStorage.getItem(`${SESSION_STORAGE_KEY_PREFIX}${walletAddress}`);
+    if (cached) {
+      return new Uint8Array(Buffer.from(cached, 'base64'));
+    }
+  } catch (e) {
+    console.warn('Failed to read session from localStorage:', e);
+  }
+  return null;
+}
+
+/**
+ * Cache session signature in localStorage
+ */
+function cacheSessionSignature(walletAddress: string, signature: Uint8Array): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(
+      `${SESSION_STORAGE_KEY_PREFIX}${walletAddress}`,
+      Buffer.from(signature).toString('base64')
+    );
+  } catch (e) {
+    console.warn('Failed to cache session in localStorage:', e);
+  }
+}
+
+/**
+ * Clear cached session signature from localStorage
+ */
+function clearCachedSessionSignature(walletAddress: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(`${SESSION_STORAGE_KEY_PREFIX}${walletAddress}`);
+  } catch (e) {
+    console.warn('Failed to clear session from localStorage:', e);
+  }
 }
 
 /**
@@ -81,6 +127,7 @@ class ClientPrivacyClient {
 
   /**
    * Get or create a session keypair for DCA operations
+   * Uses localStorage caching to avoid repeated signature requests
    * Uses promise-based locking to prevent concurrent signature requests
    */
   async getSessionKeypair(): Promise<Keypair> {
@@ -88,7 +135,16 @@ class ClientPrivacyClient {
       throw new Error('Client not initialized');
     }
 
+    // Return cached in-memory keypair if available
     if (this.sessionKeypair) {
+      return this.sessionKeypair;
+    }
+
+    // Try to restore from localStorage
+    const walletAddress = this.config.wallet.publicKey.toBase58();
+    const cachedSignature = getCachedSessionSignature(walletAddress);
+    if (cachedSignature) {
+      this.sessionKeypair = deriveSessionKeypair(cachedSignature);
       return this.sessionKeypair;
     }
 
@@ -101,6 +157,10 @@ class ClientPrivacyClient {
     this.sessionKeypairPromise = (async () => {
       const message = new TextEncoder().encode(SESSION_KEYPAIR_MESSAGE);
       const signature = await this.config!.wallet.signMessage(message);
+
+      // Cache the signature in localStorage for future sessions
+      cacheSessionSignature(walletAddress, signature);
+
       this.sessionKeypair = deriveSessionKeypair(signature);
       return this.sessionKeypair;
     })();
@@ -233,12 +293,22 @@ class ClientPrivacyClient {
 
   /**
    * Reset the client state (call when wallet disconnects)
+   * Note: We don't clear localStorage cache by default so user doesn't have to sign again
    */
   reset() {
     this.config = null;
     this.privacyCashSignature = null;
     this.sessionKeypair = null;
     this.sessionKeypairPromise = null;
+  }
+
+  /**
+   * Fully logout - clears localStorage cache too
+   * Use this when user explicitly wants to disconnect and clear all data
+   */
+  fullLogout(walletAddress: string) {
+    this.reset();
+    clearCachedSessionSignature(walletAddress);
   }
 }
 

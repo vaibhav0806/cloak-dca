@@ -121,6 +121,21 @@ export async function GET(request: NextRequest) {
 
     for (const dca of dcasToExecute) {
       try {
+        // Atomic lock: set status to 'executing' only if still 'active'
+        // This prevents double execution if keeper runs twice simultaneously
+        const { data: lockResult, error: lockError } = await supabase
+          .from('dca_configs')
+          .update({ status: 'executing', updated_at: now.toISOString() })
+          .eq('id', dca.id)
+          .eq('status', 'active') // Only lock if still active (atomic check)
+          .select()
+          .single();
+
+        if (lockError || !lockResult) {
+          console.log(`DCA ${dca.id} already being executed or not active, skipping`);
+          continue;
+        }
+
         // Create execution record
         const { data: execution, error: execError } = await supabase
           .from('executions')
@@ -363,6 +378,12 @@ export async function GET(request: NextRequest) {
           })
           .eq('dca_config_id', dca.id)
           .eq('trade_number', dca.completed_trades + 1);
+
+        // Reset status back to 'active' so it can retry next time
+        await supabase
+          .from('dca_configs')
+          .update({ status: 'active', updated_at: now.toISOString() })
+          .eq('id', dca.id);
 
         results.push({
           id: dca.id,

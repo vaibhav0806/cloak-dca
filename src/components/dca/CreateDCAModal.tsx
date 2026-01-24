@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -18,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/store';
 import { useDCAConfigs } from '@/hooks/useDCAConfigs';
 import { useShieldedBalance } from '@/hooks/useShieldedBalance';
@@ -27,7 +25,7 @@ import {
   SUPPORTED_OUTPUT_TOKENS,
   FREQUENCY_OPTIONS,
 } from '@/lib/solana/constants';
-import { Shield, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo } from '@/types';
 
 export function CreateDCAModal() {
@@ -35,12 +33,8 @@ export function CreateDCAModal() {
   const { createDCA } = useDCAConfigs();
   const { balances } = useShieldedBalance();
 
-  const [inputToken, setInputToken] = useState<TokenInfo | null>(
-    SUPPORTED_INPUT_TOKENS[0]
-  );
-  const [outputToken, setOutputToken] = useState<TokenInfo | null>(
-    SUPPORTED_OUTPUT_TOKENS[0]
-  );
+  const [inputToken, setInputToken] = useState<TokenInfo | null>(SUPPORTED_INPUT_TOKENS[0]);
+  const [outputToken, setOutputToken] = useState<TokenInfo | null>(SUPPORTED_OUTPUT_TOKENS[0]);
   const [totalAmount, setTotalAmount] = useState('');
   const [amountPerTrade, setAmountPerTrade] = useState('');
   const [frequencyHours, setFrequencyHours] = useState(24);
@@ -51,19 +45,17 @@ export function CreateDCAModal() {
     ? balances.find((b) => b.token.mint === inputToken.mint)?.amount || 0
     : 0;
 
-  const totalTrades =
-    totalAmount && amountPerTrade
-      ? Math.ceil(parseFloat(totalAmount) / parseFloat(amountPerTrade))
-      : 0;
+  const totalTrades = totalAmount && amountPerTrade
+    ? Math.ceil(parseFloat(totalAmount) / parseFloat(amountPerTrade))
+    : 0;
 
-  const estimatedDuration =
-    totalTrades > 0
-      ? `${Math.ceil((totalTrades * frequencyHours) / 24)} days`
-      : '-';
+  const estimatedDuration = totalTrades > 0
+    ? `${Math.ceil((totalTrades * frequencyHours) / 24)} days`
+    : '—';
 
   const handleSubmit = async () => {
     if (!inputToken || !outputToken) {
-      setError('Please select input and output tokens');
+      setError('Select tokens');
       return;
     }
 
@@ -71,22 +63,19 @@ export function CreateDCAModal() {
     const perTrade = parseFloat(amountPerTrade);
 
     if (isNaN(total) || total <= 0) {
-      setError('Please enter a valid total amount');
+      setError('Enter valid total');
       return;
     }
-
     if (isNaN(perTrade) || perTrade <= 0) {
-      setError('Please enter a valid amount per trade');
+      setError('Enter valid amount per trade');
       return;
     }
-
     if (perTrade > total) {
-      setError('Amount per trade cannot exceed total amount');
+      setError('Per-trade exceeds total');
       return;
     }
-
     if (total > inputBalance) {
-      setError('Insufficient shielded balance');
+      setError('Insufficient balance');
       return;
     }
 
@@ -106,7 +95,7 @@ export function CreateDCAModal() {
         setCreateModalOpen(false);
         resetForm();
       } else {
-        setError('Failed to create DCA. Please try again.');
+        setError('Failed to create strategy');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -129,85 +118,56 @@ export function CreateDCAModal() {
 
   return (
     <Dialog open={isCreateModalOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-green-500" />
-            Create Private DCA
-          </DialogTitle>
-          <DialogDescription>
-            Set up a dollar-cost averaging strategy with privacy protection.
-            Your trades will be executed from the privacy pool.
-          </DialogDescription>
+      <DialogContent className="sm:max-w-md card !p-0 border-border">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-headline">New Strategy</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-5 p-6">
           {/* Token Selection */}
-          <div className="flex items-center gap-4">
-            <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium">From</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-label block mb-2">From</label>
               <Select
                 value={inputToken?.mint}
-                onValueChange={(mint) =>
-                  setInputToken(
-                    SUPPORTED_INPUT_TOKENS.find((t) => t.mint === mint) || null
-                  )
-                }
+                onValueChange={(mint) => setInputToken(SUPPORTED_INPUT_TOKENS.find((t) => t.mint === mint) || null)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select token" />
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="card border-border">
                   {SUPPORTED_INPUT_TOKENS.map((token) => (
                     <SelectItem key={token.mint} value={token.mint}>
                       <div className="flex items-center gap-2">
-                        {token.logoURI && (
-                          <img
-                            src={token.logoURI}
-                            alt={token.symbol}
-                            className="h-5 w-5 rounded-full"
-                          />
-                        )}
-                        <span>{token.symbol}</span>
+                        {token.logoURI && <img src={token.logoURI} alt="" className="h-4 w-4 rounded-full" />}
+                        {token.symbol}
                       </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               {inputToken && (
-                <p className="text-xs text-muted-foreground">
-                  Shielded balance: {inputBalance.toFixed(2)} {inputToken.symbol}
+                <p className="text-xs text-muted-foreground mt-2">
+                  Available: <span className="text-mono">{inputBalance.toFixed(2)}</span>
                 </p>
               )}
             </div>
 
-            <ArrowRight className="h-5 w-5 text-muted-foreground mt-6" />
-
-            <div className="flex-1 space-y-2">
-              <label className="text-sm font-medium">To</label>
+            <div>
+              <label className="text-label block mb-2">To</label>
               <Select
                 value={outputToken?.mint}
-                onValueChange={(mint) =>
-                  setOutputToken(
-                    SUPPORTED_OUTPUT_TOKENS.find((t) => t.mint === mint) || null
-                  )
-                }
+                onValueChange={(mint) => setOutputToken(SUPPORTED_OUTPUT_TOKENS.find((t) => t.mint === mint) || null)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select token" />
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Select" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="card border-border">
                   {SUPPORTED_OUTPUT_TOKENS.map((token) => (
                     <SelectItem key={token.mint} value={token.mint}>
                       <div className="flex items-center gap-2">
-                        {token.logoURI && (
-                          <img
-                            src={token.logoURI}
-                            alt={token.symbol}
-                            className="h-5 w-5 rounded-full"
-                          />
-                        )}
-                        <span>{token.symbol}</span>
+                        {token.logoURI && <img src={token.logoURI} alt="" className="h-4 w-4 rounded-full" />}
+                        {token.symbol}
                       </div>
                     </SelectItem>
                   ))}
@@ -216,43 +176,38 @@ export function CreateDCAModal() {
             </div>
           </div>
 
-          {/* Amount Configuration */}
+          {/* Amounts */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Total Amount</label>
+            <div>
+              <label className="text-label block mb-2">Total</label>
               <Input
                 type="number"
                 placeholder="1000"
                 value={totalAmount}
                 onChange={(e) => setTotalAmount(e.target.value)}
-                min="0"
-                step="0.01"
+                className="text-mono bg-muted border-border"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Amount per Trade</label>
+            <div>
+              <label className="text-label block mb-2">Per Trade</label>
               <Input
                 type="number"
                 placeholder="100"
                 value={amountPerTrade}
                 onChange={(e) => setAmountPerTrade(e.target.value)}
-                min="0"
-                step="0.01"
+                className="text-mono bg-muted border-border"
               />
             </div>
           </div>
 
           {/* Frequency */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Frequency</label>
-            <Select
-              value={frequencyHours.toString()}
-              onValueChange={(v) => setFrequencyHours(parseInt(v))}
-            >
-              <SelectTrigger>
+          <div>
+            <label className="text-label block mb-2">Frequency</label>
+            <Select value={frequencyHours.toString()} onValueChange={(v) => setFrequencyHours(parseInt(v))}>
+              <SelectTrigger className="bg-muted border-border">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="card border-border">
                 {FREQUENCY_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value.toString()}>
                     {option.label}
@@ -264,16 +219,16 @@ export function CreateDCAModal() {
 
           {/* Summary */}
           {totalTrades > 0 && (
-            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
-              <h4 className="font-medium">Summary</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="p-4 bg-muted rounded-md border border-border">
+              <p className="text-label accent mb-3">Summary</p>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-muted-foreground">Total trades:</span>
-                  <span className="ml-2 font-medium">{totalTrades}</span>
+                  <p className="text-xs text-muted-foreground mb-1">Trades</p>
+                  <p className="text-mono">{totalTrades}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground">Duration:</span>
-                  <span className="ml-2 font-medium">{estimatedDuration}</span>
+                  <p className="text-xs text-muted-foreground mb-1">Duration</p>
+                  <p className="text-mono">{estimatedDuration}</p>
                 </div>
               </div>
             </div>
@@ -281,17 +236,15 @@ export function CreateDCAModal() {
 
           {/* Error */}
           {error && (
-            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-lg">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-md text-sm border border-destructive/20">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {error}
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Cancel
-          </Button>
+        <DialogFooter className="p-6 pt-0 gap-2">
+          <Button variant="ghost" onClick={handleClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={isSubmitting || totalTrades === 0}>
             {isSubmitting ? (
               <>
@@ -299,10 +252,7 @@ export function CreateDCAModal() {
                 Creating...
               </>
             ) : (
-              <>
-                <Shield className="mr-2 h-4 w-4" />
-                Create DCA
-              </>
+              'Create'
             )}
           </Button>
         </DialogFooter>

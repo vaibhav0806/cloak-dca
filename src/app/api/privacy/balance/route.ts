@@ -37,10 +37,16 @@ export async function POST(request: NextRequest) {
 
       try {
         const { amount } = await getTokenBalance(privacyClient, mint);
-        balances.push({ token, amount });
+        // Calculate USD value (USDC/USDT = $1, SOL would need price feed)
+        let usdValue = 0;
+        if (token.symbol === 'USDC' || token.symbol === 'USDT') {
+          usdValue = amount; // Stablecoins are 1:1 with USD
+        }
+        // For other tokens like SOL, we'd need a price feed - skip for now
+        balances.push({ token, amount, usdValue });
       } catch (error) {
         console.error(`Error fetching balance for ${token.symbol}:`, error);
-        balances.push({ token, amount: 0 });
+        balances.push({ token, amount: 0, usdValue: 0 });
       }
     }
 

@@ -54,7 +54,7 @@ export class PrivacyCashServer {
       this.client = new PrivacyCash({
         RPC_url: this.rpcUrl,
         owner: this.keypair.secretKey,
-        enableDebug: false,
+        enableDebug: true, // Enable debug for better error messages
       });
       this.initialized = true;
       console.log('Privacy Cash SDK initialized successfully');
@@ -149,10 +149,16 @@ export class PrivacyCashServer {
       throw new Error('Deposit amount must be greater than 0');
     }
     try {
+      console.log(`Attempting to deposit ${baseUnits} USDC base units from wallet: ${this.keypair.publicKey.toBase58()}`);
       const result = await this.client.depositUSDC({ base_units: baseUnits });
+      console.log('Deposit USDC result:', result);
       return result;
     } catch (error) {
+      console.error('Full deposit error:', error);
+      // Try to extract more details from the error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : '';
+      console.error('Error stack:', errorStack);
       throw new Error(`Failed to deposit USDC: ${errorMessage}`);
     }
   }

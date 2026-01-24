@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Wallet, LogOut, Copy, ExternalLink } from 'lucide-react';
+import { LogOut, Copy, ExternalLink, Check } from 'lucide-react';
 import { useState } from 'react';
 
 export function WalletButton() {
@@ -18,9 +18,7 @@ export function WalletButton() {
   const { setVisible } = useWalletModal();
   const [copied, setCopied] = useState(false);
 
-  const handleConnect = () => {
-    setVisible(true);
-  };
+  const handleConnect = () => setVisible(true);
 
   const handleCopy = async () => {
     if (publicKey) {
@@ -32,22 +30,16 @@ export function WalletButton() {
 
   const handleExplorer = () => {
     if (publicKey) {
-      window.open(
-        `https://explorer.solana.com/address/${publicKey.toBase58()}?cluster=devnet`,
-        '_blank'
-      );
+      window.open(`https://explorer.solana.com/address/${publicKey.toBase58()}`, '_blank');
     }
   };
 
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 4)}...${address.slice(-4)}`;
-  };
+  const formatAddress = (address: string) => `${address.slice(0, 4)}···${address.slice(-4)}`;
 
   if (!connected || !publicKey) {
     return (
-      <Button onClick={handleConnect} variant="default">
-        <Wallet className="mr-2 h-4 w-4" />
-        Connect Wallet
+      <Button onClick={handleConnect}>
+        Connect
       </Button>
     );
   }
@@ -55,19 +47,19 @@ export function WalletButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">
-          <Wallet className="mr-2 h-4 w-4" />
-          {formatAddress(publicKey.toBase58())}
-        </Button>
+        <button className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-md hover:border-accent/50 transition-colors bg-card">
+          <span className="status-dot active" />
+          <span className="text-mono">{formatAddress(publicKey.toBase58())}</span>
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="end" className="w-44 card">
         <DropdownMenuItem onClick={handleCopy}>
-          <Copy className="mr-2 h-4 w-4" />
-          {copied ? 'Copied!' : 'Copy Address'}
+          {copied ? <Check className="mr-2 h-4 w-4 accent" /> : <Copy className="mr-2 h-4 w-4" />}
+          {copied ? 'Copied' : 'Copy address'}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleExplorer}>
           <ExternalLink className="mr-2 h-4 w-4" />
-          View on Explorer
+          Explorer
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={disconnect} className="text-destructive">

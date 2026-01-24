@@ -1,179 +1,363 @@
 'use client';
 
+import { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
-import { ShieldedBalance } from '@/components/dashboard/ShieldedBalance';
-import { ActiveDCA } from '@/components/dashboard/ActiveDCA';
-import { ExecutionHistory } from '@/components/dashboard/ExecutionHistory';
-import { CreateDCAModal } from '@/components/dca/CreateDCAModal';
-import { Button } from '@/components/ui/button';
-import { useAppStore } from '@/store';
+import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Shield, Plus, Github, ExternalLink } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Lock } from 'lucide-react';
 
-export default function Home() {
-  const { connected } = useWallet();
-  const { setCreateModalOpen } = useAppStore();
+// 3D Particle Globe - rotating sphere of glowing particles
+function PrivacyGlobe() {
+  // Generate particles on a sphere surface
+  const particles = useMemo(() => {
+    const points: Array<{ id: number; lat: number; lng: number; size: number; delay: number }> = [];
+    const latitudes = [-60, -40, -20, 0, 20, 40, 60];
+    let id = 0;
+
+    latitudes.forEach((lat, latIdx) => {
+      // More particles near equator, fewer at poles
+      const particlesAtLat = Math.floor(12 * Math.cos((lat * Math.PI) / 180));
+      for (let i = 0; i < particlesAtLat; i++) {
+        const lng = (360 / particlesAtLat) * i + (latIdx % 2) * 15; // offset alternating rows
+        points.push({
+          id: id++,
+          lat,
+          lng,
+          size: 2 + Math.random() * 2,
+          delay: Math.random() * 4,
+        });
+      }
+    });
+
+    // Add polar particles
+    points.push({ id: id++, lat: 85, lng: 0, size: 3, delay: 0 });
+    points.push({ id: id++, lat: -85, lng: 0, size: 3, delay: 2 });
+
+    return points;
+  }, []);
+
+  // Connection lines between nearby particles
+  const connections = useMemo(() => {
+    const lines: Array<{ id: string; lat1: number; lng1: number; lat2: number; lng2: number }> = [];
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const p1 = particles[i];
+        const p2 = particles[j];
+        const latDiff = Math.abs(p1.lat - p2.lat);
+        const lngDiff = Math.min(Math.abs(p1.lng - p2.lng), 360 - Math.abs(p1.lng - p2.lng));
+        // Connect if close enough
+        if (latDiff <= 25 && lngDiff <= 40) {
+          lines.push({
+            id: `${p1.id}-${p2.id}`,
+            lat1: p1.lat,
+            lng1: p1.lng,
+            lat2: p2.lat,
+            lng2: p2.lng,
+          });
+        }
+      }
+    }
+    return lines.slice(0, 60); // Limit connections
+  }, [particles]);
+
+  const radius = 140;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="h-8 w-8 text-green-500" />
-            <span className="text-xl font-bold">Cloak</span>
-            <span className="text-xs bg-green-500/10 text-green-500 px-2 py-1 rounded-full">
-              Beta
-            </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Github className="h-5 w-5" />
-            </a>
-            <WalletButton />
-          </div>
+    <div className="relative w-full h-full flex items-center justify-center">
+      {/* Ambient glow */}
+      <div className="absolute w-72 h-72 rounded-full bg-accent/10 blur-3xl" />
+      <div className="absolute w-48 h-48 rounded-full bg-accent/20 blur-2xl animate-pulse" />
+
+      {/* 3D Scene container */}
+      <div
+        className="globe-container"
+        style={{
+          width: radius * 2,
+          height: radius * 2,
+          perspective: '800px',
+        }}
+      >
+        {/* Rotating sphere */}
+        <div
+          className="globe-sphere"
+          style={{
+            width: '100%',
+            height: '100%',
+            transformStyle: 'preserve-3d',
+            animation: 'globeRotate 20s linear infinite',
+          }}
+        >
+          {/* Particles */}
+          {particles.map((p) => {
+            const latRad = (p.lat * Math.PI) / 180;
+            const lngRad = (p.lng * Math.PI) / 180;
+            const x = radius * Math.cos(latRad) * Math.sin(lngRad);
+            const y = radius * Math.sin(latRad);
+            const z = radius * Math.cos(latRad) * Math.cos(lngRad);
+
+            return (
+              <div
+                key={p.id}
+                className="globe-particle"
+                style={{
+                  width: p.size,
+                  height: p.size,
+                  transform: `translate3d(${x + radius - p.size / 2}px, ${-y + radius - p.size / 2}px, ${z}px)`,
+                  animationDelay: `${p.delay}s`,
+                }}
+              />
+            );
+          })}
+
+          {/* Connection lines */}
+          {connections.map((c) => {
+            const lat1Rad = (c.lat1 * Math.PI) / 180;
+            const lng1Rad = (c.lng1 * Math.PI) / 180;
+            const lat2Rad = (c.lat2 * Math.PI) / 180;
+            const lng2Rad = (c.lng2 * Math.PI) / 180;
+
+            const x1 = radius * Math.cos(lat1Rad) * Math.sin(lng1Rad) + radius;
+            const y1 = -radius * Math.sin(lat1Rad) + radius;
+            const z1 = radius * Math.cos(lat1Rad) * Math.cos(lng1Rad);
+            const x2 = radius * Math.cos(lat2Rad) * Math.sin(lng2Rad) + radius;
+            const y2 = -radius * Math.sin(lat2Rad) + radius;
+            const z2 = radius * Math.cos(lat2Rad) * Math.cos(lng2Rad);
+
+            const length = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * (180 / Math.PI);
+            const midZ = (z1 + z2) / 2;
+
+            return (
+              <div
+                key={c.id}
+                className="globe-connection"
+                style={{
+                  width: length,
+                  left: x1,
+                  top: y1,
+                  transform: `rotate(${angle}deg) translateZ(${midZ}px)`,
+                  transformOrigin: '0 0',
+                }}
+              />
+            );
+          })}
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        {!connected ? (
-          // Landing content for non-connected users
-          <div className="max-w-3xl mx-auto text-center py-20">
-            <div className="flex justify-center mb-8">
-              <div className="relative">
-                <Shield className="h-24 w-24 text-green-500" />
-                <div className="absolute -right-2 -bottom-2 h-8 w-8 bg-green-500 rounded-full flex items-center justify-center">
-                  <Plus className="h-5 w-5 text-background" />
-                </div>
-              </div>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Private Dollar Cost Averaging
-            </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Accumulate crypto on Solana with complete privacy. Your DCA strategy
-              executes from shielded pools, keeping your trading activity
-              invisible on-chain.
-            </p>
-
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-lg">
-                <Shield className="h-5 w-5 text-green-500" />
-                <span>Privacy-Preserving</span>
-              </div>
-              <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-lg">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-                <span>Powered by Solana</span>
-              </div>
-              <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 rounded-lg">
-                <ExternalLink className="h-5 w-5" />
-                <span>Jupiter DEX</span>
-              </div>
-            </div>
-
-            <WalletButton />
-
-            <div className="mt-16 grid md:grid-cols-3 gap-8 text-left">
-              <div className="p-6 border border-border/50 rounded-xl">
-                <div className="h-12 w-12 bg-green-500/10 rounded-lg flex items-center justify-center mb-4">
-                  <span className="text-2xl">1</span>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Deposit to Privacy Pool</h3>
-                <p className="text-muted-foreground">
-                  Shield your USDC in a privacy pool. Your balance becomes invisible
-                  to on-chain observers.
-                </p>
-              </div>
-              <div className="p-6 border border-border/50 rounded-xl">
-                <div className="h-12 w-12 bg-green-500/10 rounded-lg flex items-center justify-center mb-4">
-                  <span className="text-2xl">2</span>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Configure Your DCA</h3>
-                <p className="text-muted-foreground">
-                  Set your target token, amount per trade, and frequency. Sign all
-                  transactions in one session.
-                </p>
-              </div>
-              <div className="p-6 border border-border/50 rounded-xl">
-                <div className="h-12 w-12 bg-green-500/10 rounded-lg flex items-center justify-center mb-4">
-                  <span className="text-2xl">3</span>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Automatic Execution</h3>
-                <p className="text-muted-foreground">
-                  Our keeper executes your trades on schedule. Each swap happens
-                  privately through the pool.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          // Dashboard for connected users
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-bold">Dashboard</h1>
-              <Button onClick={() => setCreateModalOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create DCA
-              </Button>
-            </div>
-
-            <div className="grid gap-8 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <ShieldedBalance />
-              </div>
-              <div className="lg:col-span-2">
-                <ActiveDCA />
-              </div>
-            </div>
-
-            <ExecutionHistory />
-          </div>
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border/40 mt-20">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-500" />
-              <span className="font-semibold">Cloak</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Built for the Privacy.cash hackathon. Use at your own risk on devnet.
-            </p>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://privacy.cash"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Privacy.cash
-              </a>
-              <a
-                href="https://jup.ag"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Jupiter
-              </a>
-            </div>
-          </div>
+      {/* Center emblem */}
+      <div className="absolute flex items-center justify-center pointer-events-none">
+        <div className="w-16 h-16 rounded-full bg-background/80 backdrop-blur-sm border border-accent/30 flex items-center justify-center shadow-[0_0_40px_rgba(255,99,71,0.3)]">
+          <Shield className="h-7 w-7 text-accent" />
         </div>
-      </footer>
-
-      {/* Modal */}
-      <CreateDCAModal />
+      </div>
     </div>
   );
 }
+
+export default function Home() {
+  const { connected, connecting } = useWallet();
+
+  // Simple hydration check - becomes true after first client render
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Before hydration, render minimal shell to avoid mismatch
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-background" />
+    );
+  }
+
+  // While actively connecting, show spinner
+  if (connecting) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header showNav={false} />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="h-6 w-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header showNav={!connected} />
+      <main className="flex-1">
+        {!connected ? <Landing /> : <Dashboard />}
+      </main>
+      {!connected && <Footer />}
+    </div>
+  );
+}
+
+function Header({ showNav = true }: { showNav?: boolean }) {
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-12">
+          <Link href="/" className="text-xl font-semibold tracking-tight">
+            cloak<span className="accent">.</span>
+          </Link>
+          {showNav && (
+            <nav className="hidden md:flex items-center gap-8">
+              <a href="#how" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                How it works
+              </a>
+              <a href="#privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Privacy
+              </a>
+            </nav>
+          )}
+        </div>
+        <WalletButton />
+      </div>
+    </header>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-border">
+      <div className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">
+          cloak<span className="accent">.</span> — private dca
+        </span>
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <a href="https://github.com" target="_blank" rel="noopener" className="hover:text-foreground transition-colors">
+            GitHub
+          </a>
+          <a href="https://twitter.com" target="_blank" rel="noopener" className="hover:text-foreground transition-colors">
+            Twitter
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function Landing() {
+  return (
+    <>
+      {/* Hero */}
+      <section className="pt-32 pb-24 md:pt-44 md:pb-32 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Left: Text */}
+            <div>
+              <p className="text-label accent mb-6">Zero-Knowledge DCA on Solana</p>
+              <h1 className="text-display mb-8">
+                Accumulate<br />
+                <span className="accent">invisibly.</span>
+              </h1>
+              <p className="text-xl text-muted-foreground leading-relaxed mb-12 max-w-xl">
+                Dollar-cost average through privacy pools. Your positions, timing, and flow are cryptographically unlinkable.
+              </p>
+              <a href="#how" className="group inline-flex items-center gap-2 text-foreground hover:text-accent transition-colors font-medium">
+                See how it works
+                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </a>
+            </div>
+
+            {/* Right: 3D Globe visualization */}
+            <div className="relative h-[380px] md:h-[420px] hidden md:flex items-center justify-center">
+              <PrivacyGlobe />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section id="how" className="section">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-label accent mb-4">How it works</p>
+          <h2 className="text-headline mb-16 max-w-md">
+            Three steps to invisible accumulation.
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-12 md:gap-8">
+            <Step
+              number="01"
+              title="Shield"
+              description="Deposit assets into the privacy pool. You receive an encrypted commitment—your balance is now unlinkable."
+            />
+            <Step
+              number="02"
+              title="Configure"
+              description="Set your target asset, amount per trade, and frequency. Sign once to authorize all future executions."
+            />
+            <Step
+              number="03"
+              title="Execute"
+              description="Trades execute automatically on schedule. Each swap is routed through the pool—origin never exposed."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Privacy */}
+      <section id="privacy" className="section border-t border-border">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-16 items-start">
+            <div>
+              <p className="text-label accent mb-4">Privacy Model</p>
+              <h2 className="text-headline mb-6">
+                Mathematics, not trust.
+              </h2>
+              <p className="text-muted-foreground leading-relaxed">
+                Cloak uses zero-knowledge proofs to validate transactions without revealing
+                inputs, outputs, or links between them. Your on-chain footprint is
+                indistinguishable from any other pool participant.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <Feature
+                icon={<Shield className="h-5 w-5" />}
+                title="Shielded Pool"
+                description="UTXO-based privacy pool with encrypted commitments. Deposits and withdrawals reveal nothing."
+              />
+              <Feature
+                icon={<Lock className="h-5 w-5" />}
+                title="Session Keys"
+                description="Deterministic keypairs authorize trades without exposing your primary wallet."
+              />
+              <Feature
+                icon={<Zap className="h-5 w-5" />}
+                title="Jupiter Routing"
+                description="Best-price execution across Solana DEXs with MEV protection built in."
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </>
+  );
+}
+
+function Step({ number, title, description }: { number: string; title: string; description: string }) {
+  return (
+    <div className="group">
+      <p className="text-mono text-muted-foreground mb-4">{number}</p>
+      <h3 className="text-title mb-3 group-hover:text-accent transition-colors">{title}</h3>
+      <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex gap-4 p-4 rounded-lg border border-border hover:border-accent/50 transition-colors">
+      <div className="text-accent mt-0.5">{icon}</div>
+      <div>
+        <h4 className="text-title mb-1">{title}</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      </div>
+    </div>
+  );
+}
+

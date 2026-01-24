@@ -1,24 +1,26 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
   subsets: ["latin"],
+  variable: "--font-manrope",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Cloak - Private Dollar Cost Averaging on Solana",
+  title: "Cloak — Private DCA",
   description:
-    "Privacy-preserving DCA on Solana. Accumulate crypto without revealing your trading strategy. Built with Privacy.cash and Jupiter.",
-  keywords: ["Solana", "DCA", "privacy", "crypto", "trading", "cloak", "anonymous"],
+    "Accumulate wealth quietly. Privacy-preserving dollar cost averaging on Solana.",
+  keywords: ["Solana", "DCA", "privacy", "crypto", "trading", "cloak"],
 };
 
 export default function RootLayout({
@@ -27,9 +29,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html
+      lang="en"
+      className={`${manrope.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className="font-sans min-h-screen bg-background text-foreground"
+        suppressHydrationWarning
       >
         <SupabaseProvider>
           <WalletProvider>{children}</WalletProvider>
