@@ -254,7 +254,7 @@ export function CreateDCAModal() {
 
         <DialogFooter className="p-6 pt-0 gap-2">
           <Button variant="ghost" onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting || totalTrades === 0}>
+          <Button onClick={handleSubmit} disabled={isSubmitting || totalTrades === 0 || parseFloat(amountPerTrade) < MIN_AMOUNT_PER_TRADE}>
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
