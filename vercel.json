@@ -4,11 +4,5 @@
       "path": "/api/keeper/execute",
       "schedule": "*/15 * * * *"
     }
-  ],
-  "functions": {
-    "api/**": {
-      "includeFiles": "node_modules/{privacycash,@lightprotocol}/**/*",
-      "maxDuration": 60
-    }
-  }
+  ]
 }

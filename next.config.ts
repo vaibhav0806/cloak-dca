@@ -61,7 +61,7 @@ const nextConfig: NextConfig = {
 
   // Include all privacycash files in serverless functions
   outputFileTracingIncludes: {
-    '/api/*': [
+    '/api/**/*': [
       './node_modules/privacycash/**/*',
       './node_modules/@lightprotocol/**/*',
     ],
