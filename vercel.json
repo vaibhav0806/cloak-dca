@@ -4,5 +4,10 @@
       "path": "/api/keeper/execute",
       "schedule": "*/15 * * * *"
     }
-  ]
+  ],
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "includeFiles": "node_modules/privacycash/**/*.wasm"
+    }
+  }
 }

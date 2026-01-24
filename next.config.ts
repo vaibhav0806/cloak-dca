@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
 
   // Server components external packages
   serverExternalPackages: ['privacycash', '@lightprotocol/hasher.rs', 'node-localstorage'],
+
+  // Include WASM files in serverless functions
+  outputFileTracingIncludes: {
+    '/api/**/*': ['./node_modules/privacycash/**/*.wasm'],
+  },
 };
 
 export default nextConfig;
