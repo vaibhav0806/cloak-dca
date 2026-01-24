@@ -6,8 +6,8 @@
     }
   ],
   "functions": {
-    "src/app/api/**/*.ts": {
-      "includeFiles": "node_modules/privacycash/**/*.wasm"
+    "app/api/**/*": {
+      "includeFiles": "node_modules/privacycash/**"
     }
   }
 }

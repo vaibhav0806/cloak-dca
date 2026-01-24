@@ -1,4 +1,6 @@
 import type { NextConfig } from "next";
+import path from "path";
+import CopyPlugin from "copy-webpack-plugin";
 
 const nextConfig: NextConfig = {
   // Configure webpack for WASM support
@@ -16,11 +18,26 @@ const nextConfig: NextConfig = {
       type: 'webassembly/async',
     });
 
-    // Mark privacycash and its dependencies as external for server-side only
+    // Copy WASM files to output directory for server builds
+    if (isServer) {
+      config.plugins.push(
+        new CopyPlugin({
+          patterns: [
+            {
+              from: path.join(process.cwd(), 'node_modules/privacycash/circuit2'),
+              to: path.join(config.output.path, 'circuit2'),
+              noErrorOnMissing: true,
+            },
+          ],
+        })
+      );
+    }
+
+    // Mark some dependencies as external for server-side
+    // Note: privacycash is NOT external so webpack can bundle WASM properly
     if (isServer) {
       config.externals = config.externals || [];
-      // These packages should only run on the server
-      config.externals.push('privacycash', '@lightprotocol/hasher.rs', 'node-localstorage');
+      config.externals.push('@lightprotocol/hasher.rs', 'node-localstorage');
     }
 
     return config;
@@ -33,7 +50,8 @@ const nextConfig: NextConfig = {
   },
 
   // Server components external packages
-  serverExternalPackages: ['privacycash', '@lightprotocol/hasher.rs', 'node-localstorage'],
+  // Note: privacycash is NOT external so WASM gets bundled
+  serverExternalPackages: ['@lightprotocol/hasher.rs', 'node-localstorage'],
 
   // Include WASM files in serverless functions
   outputFileTracingIncludes: {
