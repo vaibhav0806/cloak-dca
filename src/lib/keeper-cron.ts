@@ -19,9 +19,9 @@ async function executeKeeper() {
   console.log(`[Keeper] Starting execution at ${new Date().toISOString()}`);
 
   try {
-    // Call the keeper API endpoint internally
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:${process.env.PORT || 3000}`;
-    const response = await fetch(`${baseUrl}/api/keeper/execute`, {
+    // Call the keeper API endpoint internally using localhost (not public URL)
+    const port = process.env.PORT || 3000;
+    const response = await fetch(`http://localhost:${port}/api/keeper/execute`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${process.env.CRON_SECRET || ''}`,
