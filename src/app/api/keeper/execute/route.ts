@@ -5,7 +5,8 @@ import { addHours } from 'date-fns';
 import { createServerPrivacyClient } from '@/lib/privacy/server';
 import { getQuote, getSwapTransaction } from '@/lib/jupiter';
 import { USDC_MINT, SOL_MINT } from '@/lib/solana/constants';
-import { Keypair, Connection } from '@solana/web3.js';
+import { Keypair, Connection, PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 /**
  * Confirm a transaction using polling instead of WebSocket subscriptions
@@ -198,6 +199,7 @@ export async function GET(request: NextRequest) {
             withdrawResult = await privacyClient.withdrawSPL(inputMint, inputAmount, sessionPublicKey.toBase58());
           }
           console.log(`Withdrawal tx: ${withdrawResult.tx}`);
+          console.log(`Withdrawal result:`, JSON.stringify(withdrawResult, null, 2));
 
           // Wait for withdrawal to confirm before swapping
           console.log('Waiting for withdrawal confirmation...');
@@ -214,6 +216,25 @@ export async function GET(request: NextRequest) {
 
         if (sessionBalance < 5000000) { // Less than 0.005 SOL
           throw new Error(`Insufficient SOL for transaction fees. Session wallet has ${sessionBalance / 1e9} SOL, needs at least 0.005 SOL`);
+        }
+
+        // Check input token balance in session wallet
+        if (inputMint !== SOL_MINT) {
+          try {
+            const inputMintPubkey = new PublicKey(inputMint);
+            const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
+            const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
+            console.log(`Session wallet ${inputMint === USDC_MINT ? 'USDC' : 'token'} balance: ${tokenAccountInfo.value.uiAmount}`);
+
+            if (Number(tokenAccountInfo.value.amount) < inputAmount) {
+              throw new Error(`Insufficient input token balance. Have ${tokenAccountInfo.value.uiAmount}, need ${dca.amount_per_trade}`);
+            }
+          } catch (tokenError) {
+            if ((tokenError as Error).message.includes('Insufficient')) {
+              throw tokenError;
+            }
+            console.log(`Could not check token balance (ATA may not exist): ${(tokenError as Error).message}`);
+          }
         }
 
         // Step 2: Swap via Jupiter

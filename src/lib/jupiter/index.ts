@@ -1,8 +1,19 @@
 import { VersionedTransaction } from '@solana/web3.js';
 import type { JupiterQuote } from '@/types';
 
-// Use lite-api (no API key required) instead of api.jup.ag (requires API key)
-const JUPITER_API_BASE = 'https://lite-api.jup.ag/swap/v1';
+// Jupiter API with authentication
+const JUPITER_API_BASE = 'https://api.jup.ag/swap/v1';
+
+function getJupiterHeaders() {
+  const apiKey = process.env.JUPITER_API_KEY;
+  if (!apiKey) {
+    throw new Error('JUPITER_API_KEY environment variable is not set');
+  }
+  return {
+    'Content-Type': 'application/json',
+    'x-api-key': apiKey,
+  };
+}
 
 export interface GetQuoteParams {
   inputMint: string;
@@ -42,7 +53,9 @@ export async function getQuote({
     slippageBps: slippageBps.toString(),
   });
 
-  const response = await fetch(`${JUPITER_API_BASE}/quote?${params}`);
+  const response = await fetch(`${JUPITER_API_BASE}/quote?${params}`, {
+    headers: getJupiterHeaders(),
+  });
 
   if (!response.ok) {
     const error = await response.text();
@@ -63,9 +76,7 @@ export async function getSwapTransaction({
 }: GetSwapParams): Promise<{ transaction: VersionedTransaction; lastValidBlockHeight: number }> {
   const response = await fetch(`${JUPITER_API_BASE}/swap`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getJupiterHeaders(),
     body: JSON.stringify({
       quoteResponse,
       userPublicKey,
@@ -105,13 +116,12 @@ export async function getSwapTransaction({
 
 /**
  * Get token price in USDC
- * Note: Jupiter price API requires authentication, so this returns 0 as fallback
  */
 export async function getTokenPrice(tokenMint: string): Promise<number> {
   try {
-    // Try the public price API
     const response = await fetch(
-      `https://api.jup.ag/price/v2?ids=${tokenMint}`
+      `https://api.jup.ag/price/v2?ids=${tokenMint}`,
+      { headers: getJupiterHeaders() }
     );
 
     if (!response.ok) {
