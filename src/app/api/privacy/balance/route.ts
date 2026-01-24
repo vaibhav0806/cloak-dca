@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerPrivacyClient, getTokenBalance } from '@/lib/privacy/server';
-import { SUPPORTED_INPUT_TOKENS, SUPPORTED_OUTPUT_TOKENS } from '@/lib/solana/constants';
+import { SUPPORTED_INPUT_TOKENS } from '@/lib/solana/constants';
 import type { ShieldedBalance } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -20,9 +20,11 @@ export async function POST(request: NextRequest) {
     // Initialize Privacy Cash client
     const privacyClient = await createServerPrivacyClient(rpcUrl, sessionKeypairBase64);
 
-    // Get all unique tokens
-    const allTokens = [...SUPPORTED_INPUT_TOKENS, ...SUPPORTED_OUTPUT_TOKENS];
-    const tokenMap = new Map<string, typeof allTokens[0]>(allTokens.map(t => [t.mint, t]));
+    // Only check input tokens - privacy pool only holds USDC/USDT
+    // Output tokens (SOL, cbBTC, ZEC) are swapped to user's wallet, not held privately
+    const tokenMap = new Map<string, typeof SUPPORTED_INPUT_TOKENS[0]>(
+      SUPPORTED_INPUT_TOKENS.map(t => [t.mint, t])
+    );
 
     // If specific mints requested, filter to those
     const mintsToCheck: string[] = tokenMints?.length > 0
