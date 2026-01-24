@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Private Dollar Cost Averaging on Solana - usecloak.xyz",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
