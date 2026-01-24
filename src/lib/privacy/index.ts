@@ -140,8 +140,13 @@ class ClientPrivacyClient {
       if (response.ok) {
         const data = await response.json();
         if (data.sessionKeypair) {
-          const secretKey = Buffer.from(data.sessionKeypair, 'base64');
-          return Keypair.fromSecretKey(new Uint8Array(secretKey));
+          // Browser-compatible base64 decoding
+          const binaryString = atob(data.sessionKeypair);
+          const secretKey = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            secretKey[i] = binaryString.charCodeAt(i);
+          }
+          return Keypair.fromSecretKey(secretKey);
         }
       }
     } catch (error) {
@@ -155,7 +160,9 @@ class ClientPrivacyClient {
    */
   private async saveSessionToDatabase(walletAddress: string, keypair: Keypair): Promise<void> {
     try {
-      const sessionKeypairBase64 = Buffer.from(keypair.secretKey).toString('base64');
+      // Browser-compatible base64 encoding
+      const binaryString = String.fromCharCode(...keypair.secretKey);
+      const sessionKeypairBase64 = btoa(binaryString);
       await fetch('/api/session', {
         method: 'POST',
         headers: {
