@@ -198,9 +198,22 @@ export async function GET(request: NextRequest) {
             withdrawResult = await privacyClient.withdrawSPL(inputMint, inputAmount, sessionPublicKey.toBase58());
           }
           console.log(`Withdrawal tx: ${withdrawResult.tx}`);
+
+          // Wait for withdrawal to confirm before swapping
+          console.log('Waiting for withdrawal confirmation...');
+          await confirmTransactionPolling(connection, withdrawResult.tx, 30, 1000);
+          console.log('Withdrawal confirmed');
         } catch (withdrawError) {
           console.error(`Withdrawal failed for DCA ${dca.id}:`, withdrawError);
           throw new Error(`Privacy Cash withdrawal failed: ${withdrawError instanceof Error ? withdrawError.message : 'Unknown error'}`);
+        }
+
+        // Check session wallet has enough SOL for transaction fees
+        const sessionBalance = await connection.getBalance(sessionPublicKey);
+        console.log(`Session wallet SOL balance: ${sessionBalance / 1e9} SOL`);
+
+        if (sessionBalance < 5000000) { // Less than 0.005 SOL
+          throw new Error(`Insufficient SOL for transaction fees. Session wallet has ${sessionBalance / 1e9} SOL, needs at least 0.005 SOL`);
         }
 
         // Step 2: Swap via Jupiter

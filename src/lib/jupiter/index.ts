@@ -90,7 +90,10 @@ export async function getSwapTransaction({
 
   // Check for simulation errors
   if (data.simulationError) {
-    throw new Error(`Swap simulation failed: ${data.simulationError}`);
+    const errorDetails = typeof data.simulationError === 'string'
+      ? data.simulationError
+      : JSON.stringify(data.simulationError, null, 2);
+    throw new Error(`Swap simulation failed: ${errorDetails}`);
   }
 
   // Deserialize the transaction
