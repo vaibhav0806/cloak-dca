@@ -6,8 +6,12 @@
     }
   ],
   "functions": {
-    "app/api/**/*": {
-      "includeFiles": "node_modules/privacycash/**"
+    "api/**": {
+      "includeFiles": [
+        "node_modules/privacycash/**/*",
+        "node_modules/@lightprotocol/**/*"
+      ],
+      "maxDuration": 60
     }
   }
 }

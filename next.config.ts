@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
       layers: true,
     };
 
+    // Preserve __dirname and __filename in bundled code
+    config.node = {
+      ...config.node,
+      __dirname: false,
+      __filename: false,
+    };
+
     // Handle WASM files
     config.module.rules.push({
       test: /\.wasm$/,
@@ -33,11 +40,11 @@ const nextConfig: NextConfig = {
       );
     }
 
-    // Mark some dependencies as external for server-side
-    // Note: privacycash is NOT external so webpack can bundle WASM properly
+    // Mark dependencies as external for server-side
+    // privacycash must be external because bundling breaks its internal paths
     if (isServer) {
       config.externals = config.externals || [];
-      config.externals.push('@lightprotocol/hasher.rs', 'node-localstorage');
+      config.externals.push('privacycash', '@lightprotocol/hasher.rs', 'node-localstorage');
     }
 
     return config;
@@ -50,12 +57,14 @@ const nextConfig: NextConfig = {
   },
 
   // Server components external packages
-  // Note: privacycash is NOT external so WASM gets bundled
-  serverExternalPackages: ['@lightprotocol/hasher.rs', 'node-localstorage'],
+  serverExternalPackages: ['privacycash', '@lightprotocol/hasher.rs', 'node-localstorage'],
 
-  // Include WASM files in serverless functions
+  // Include all privacycash files in serverless functions
   outputFileTracingIncludes: {
-    '/api/**/*': ['./node_modules/privacycash/**/*.wasm'],
+    '/api/*': [
+      './node_modules/privacycash/**/*',
+      './node_modules/@lightprotocol/**/*',
+    ],
   },
 };
 
