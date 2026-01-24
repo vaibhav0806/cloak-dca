@@ -46,31 +46,6 @@ export class PrivacyCashServer {
    */
   async initialize(): Promise<void> {
     try {
-      const fs = await import('fs');
-      const path = await import('path');
-
-      // On Vercel, we need to use /tmp for any file operations
-      // The SDK uses node-localstorage which creates a 'cache' folder in cwd
-      if (process.env.VERCEL) {
-        // Create the cache directory in /tmp
-        const tmpCacheDir = '/tmp/cache';
-        if (!fs.existsSync(tmpCacheDir)) {
-          fs.mkdirSync(tmpCacheDir, { recursive: true });
-        }
-
-        // Also create subdirectories the SDK might expect
-        const fetchOffsetDir = '/tmp/cache';
-        ['fetch_offset', 'utxo_cache'].forEach(subdir => {
-          const dir = path.join(fetchOffsetDir, subdir);
-          if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-          }
-        });
-
-        // Change to /tmp so the SDK creates its cache there
-        process.chdir('/tmp');
-      }
-
       // Dynamic import to avoid bundling issues
       const { PrivacyCash } = await import('privacycash');
 
@@ -79,14 +54,14 @@ export class PrivacyCashServer {
       this.client = new PrivacyCash({
         RPC_url: this.rpcUrl,
         owner: this.keypair.secretKey,
-        enableDebug: true, // Enable debug for better error messages
+        enableDebug: process.env.NODE_ENV === 'development',
       });
       this.initialized = true;
       console.log('Privacy Cash SDK initialized successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Privacy Cash SDK initialization failed:', error);
-      throw new Error(`Failed to initialize Privacy Cash SDK: ${errorMessage}. Ensure WASM files are properly configured.`);
+      throw new Error(`Failed to initialize Privacy Cash SDK: ${errorMessage}`);
     }
   }
 

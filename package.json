@@ -5,11 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "npm run copy-wasm && next build --webpack",
-    "start": "next start",
+    "build": "next build --webpack",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
-    "copy-wasm": "mkdir -p public/wasm && cp -r node_modules/privacycash/circuit2/*.wasm public/wasm/ 2>/dev/null || true",
-    "postinstall": "cp node_modules/@lightprotocol/hasher.rs/dist/hasher_wasm_simd_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/ && cp node_modules/@lightprotocol/hasher.rs/dist/light_wasm_hasher_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/"
+    "postinstall": "cp node_modules/@lightprotocol/hasher.rs/dist/hasher_wasm_simd_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/ 2>/dev/null || true && cp node_modules/@lightprotocol/hasher.rs/dist/light_wasm_hasher_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/ 2>/dev/null || true"
   },
   "dependencies": {
     "@lightprotocol/hasher.rs": "^0.2.1",
@@ -31,6 +30,7 @@
     "date-fns": "^4.1.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.4",
+    "node-cron": "^4.2.1",
     "privacycash": "^1.1.11",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -40,9 +40,9 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/node-cron": "^3.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "copy-webpack-plugin": "^13.0.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
