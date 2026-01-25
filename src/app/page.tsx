@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Shield, Lock, Zap, Eye, EyeOff, Check, ArrowUpRight } from 'lucide-react';
+import { Shield, Lock, Zap, Eye, EyeOff, Check } from 'lucide-react';
 
 export default function Home() {
   const { connected, connecting } = useWallet();
@@ -106,7 +106,6 @@ function Footer() {
             <h4 className="font-medium mb-4 text-sm">Resources</h4>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><a href="#" className="hover:text-foreground transition-colors">Documentation</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">GitHub</a></li>
               <li><a href="#" className="hover:text-foreground transition-colors">Audit Report</a></li>
             </ul>
           </div>
@@ -151,7 +150,7 @@ function Landing() {
               style={{ animation: 'fadeSlideUp 0.7s ease-out forwards', opacity: 0 }}
             >
               <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-              <span className="text-xs sm:text-sm text-muted-foreground">Built on zero-knowledge cryptography</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">Zero-Knowledge DCA on Solana</span>
             </div>
 
             {/* Headline */}
@@ -184,7 +183,7 @@ function Landing() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-accent" />
-                <span>Open source</span>
+                <span>Session keys</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-accent" />
@@ -306,8 +305,8 @@ function Landing() {
                   description="Your keys, your crypto. We never have access to your funds."
                 />
                 <SecurityFeature
-                  title="Open source"
-                  description="All code is publicly available for review on GitHub."
+                  title="Session keys"
+                  description="Deterministic keypairs authorize trades without exposing your primary wallet."
                 />
                 <SecurityFeature
                   title="Audited"
@@ -330,29 +329,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="relative py-16 sm:py-24 lg:py-32 border-t border-border">
-        <div className="absolute inset-0 bg-gradient-to-t from-accent/[0.04] to-transparent pointer-events-none" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium mb-6">
-            Start accumulating privately
-          </h2>
-          <p className="text-base sm:text-lg text-muted-foreground mb-8 sm:mb-10 max-w-xl mx-auto">
-            Join thousands of users who trust Cloak for private, automated crypto accumulation on Solana.
-          </p>
-          <a
-            href="#"
-            className="inline-flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          >
-            Connect wallet to get started
-            <ArrowUpRight className="h-4 w-4" />
-          </a>
-        </div>
-      </section>
     </div>
   );
 }
