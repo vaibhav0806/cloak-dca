@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
-import { Manrope, JetBrains_Mono } from "next/font/google";
+import { Syne, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
 
-const manrope = Manrope({
+const syne = Syne({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-syne",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const spaceMono = Space_Mono({
   subsets: ["latin"],
-  variable: "--font-jetbrains",
+  weight: ["400", "700"],
+  variable: "--font-space-mono",
   display: "swap",
 });
 
@@ -31,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${manrope.variable} ${jetbrainsMono.variable}`}
+      className={`${syne.variable} ${spaceMono.variable}`}
       suppressHydrationWarning
     >
       <body
