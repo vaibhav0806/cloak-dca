@@ -154,10 +154,6 @@ function Landing() {
                 <Check className="h-4 w-4 text-accent" />
                 <span>Session keys</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-accent" />
-                <span>Audited contracts</span>
-              </div>
             </div>
           </div>
         </div>
@@ -278,21 +274,55 @@ function Landing() {
                   description="Deterministic keypairs authorize trades without exposing your primary wallet."
                 />
                 <SecurityFeature
-                  title="Audited"
-                  description="Smart contracts audited by leading security firms."
-                />
-                <SecurityFeature
-                  title="Battle-tested cryptography"
-                  description="Built on proven zero-knowledge proof systems."
+                  title="Zero-knowledge proofs"
+                  description="Cryptographic proofs verify transactions without revealing sensitive data."
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 sm:gap-6 content-start">
-              <TechCard title="Privacy Layer" value="Privacy.cash" />
-              <TechCard title="Encryption" value="AES-256-GCM" />
-              <TechCard title="DEX Aggregator" value="Jupiter" />
-              <TechCard title="Network" value="Solana" />
+            <div className="relative">
+              {/* Tech stack visualization */}
+              <div className="relative p-8 sm:p-10 rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 overflow-hidden">
+                {/* Decorative grid */}
+                <div className="absolute inset-0 opacity-[0.03]" style={{
+                  backgroundImage: `linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)`,
+                  backgroundSize: '24px 24px'
+                }} />
+
+                {/* Glow effect */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
+
+                <div className="relative space-y-6">
+                  <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground uppercase tracking-wider">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    Tech Stack
+                  </div>
+
+                  <div className="space-y-4">
+                    <TechRow label="Privacy" value="Privacy.cash" />
+                    <TechRow label="Swaps" value="Jupiter Aggregator" />
+                    <TechRow label="Network" value="Solana" />
+                  </div>
+
+                  {/* Visual connector */}
+                  <div className="pt-6 border-t border-border/50">
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex -space-x-2">
+                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
+                          <Shield className="w-3.5 h-3.5 text-accent" />
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
+                          <Zap className="w-3.5 h-3.5 text-accent" />
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
+                          <Lock className="w-3.5 h-3.5 text-accent" />
+                        </div>
+                      </div>
+                      <span className="text-muted-foreground">Integrated & battle-tested</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -357,11 +387,11 @@ function SecurityFeature({ title, description }: { title: string; description: s
   );
 }
 
-function TechCard({ title, value }: { title: string; value: string }) {
+function TechRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="p-4 sm:p-6 rounded-xl border border-border bg-background">
-      <p className="text-xs sm:text-sm text-muted-foreground mb-1 sm:mb-2">{title}</p>
-      <p className="text-sm sm:text-base font-medium">{value}</p>
+    <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium font-mono">{value}</span>
     </div>
   );
 }
