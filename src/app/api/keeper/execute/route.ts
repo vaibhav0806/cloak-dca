@@ -276,6 +276,11 @@ export async function GET(request: NextRequest) {
         let swapSignature: string;
         let outputAmount: number;
 
+        // Capture pre-swap SOL balance so we only deposit the swap output, not the gas funds
+        const preSwapSolBalance = outputMint === SOL_MINT
+          ? await connection.getBalance(sessionPublicKey)
+          : 0;
+
         try {
           // Get swap quote with actual available amount
           const quote = await getQuote({
@@ -325,15 +330,14 @@ export async function GET(request: NextRequest) {
         if (outputMint === SOL_MINT) {
           // Get actual SOL balance and calculate how much we received from the swap
           const postSwapBalance = await connection.getBalance(sessionPublicKey);
-          // Keep some SOL for future transaction fees (0.005 SOL)
-          const reserveForFees = 5000000;
-          const availableToShield = postSwapBalance - reserveForFees;
+          // Only shield the SOL we received from the swap, NOT the gas funds
+          const swapOutput = postSwapBalance - preSwapSolBalance;
 
-          if (availableToShield > 0) {
-            actualOutputAmount = availableToShield;
-            console.log(`Actual SOL available to shield: ${actualOutputAmount / 1e9} SOL (keeping 0.005 SOL for fees)`);
+          if (swapOutput > 0) {
+            actualOutputAmount = swapOutput;
+            console.log(`SOL received from swap: ${actualOutputAmount / 1e9} SOL (gas funds preserved: ${preSwapSolBalance / 1e9} SOL)`);
           } else {
-            console.log(`Not enough SOL to shield after reserving fees. Balance: ${postSwapBalance / 1e9} SOL`);
+            console.log(`No SOL increase from swap. Pre: ${preSwapSolBalance / 1e9}, Post: ${postSwapBalance / 1e9}`);
             // Skip re-shielding but still count as success since swap worked
             actualOutputAmount = 0;
           }
