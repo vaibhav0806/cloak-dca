@@ -4,8 +4,17 @@ import { getConnection } from '@/lib/solana/connection';
 import { addHours } from 'date-fns';
 import { createServerPrivacyClient } from '@/lib/privacy/server';
 import { getQuote, getSwapTransaction } from '@/lib/jupiter';
-import { USDC_MINT, SOL_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 import { Keypair, Connection, PublicKey } from '@solana/web3.js';
+
+/**
+ * Get the number of decimals for a token mint
+ */
+function getTokenDecimals(mint: string): number {
+  if (mint === SOL_MINT) return 9;
+  if (mint === CBBTC_MINT || mint === ZEC_MINT) return 8;
+  return 6; // USDC, USDT, and default
+}
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 /**
@@ -183,7 +192,8 @@ export async function GET(request: NextRequest) {
         // Determine token mints and amounts
         const inputMint = dca.input_token;
         const outputMint = dca.output_token;
-        const inputDecimals = inputMint === SOL_MINT ? 9 : 6;
+        const inputDecimals = getTokenDecimals(inputMint);
+        const outputDecimals = getTokenDecimals(outputMint);
         const inputAmount = Math.floor(Number(dca.amount_per_trade) * Math.pow(10, inputDecimals));
 
         // Check if session wallet already has enough tokens (from previous failed attempt)
@@ -358,7 +368,7 @@ export async function GET(request: NextRequest) {
         if (actualOutputAmount <= 0) {
           console.log(`Skipping re-shield (nothing to deposit), marking trade as complete`);
 
-          const outputDecimals = outputMint === SOL_MINT ? 9 : 6;
+          // outputDecimals already defined above
           const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
 
           await supabase
@@ -398,7 +408,7 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        console.log(`Depositing ${actualOutputAmount / (outputMint === SOL_MINT ? 1e9 : 1e6)} to Privacy Cash`);
+        console.log(`Depositing ${actualOutputAmount / Math.pow(10, outputDecimals)} to Privacy Cash`);
 
         let depositResult;
         try {
@@ -424,7 +434,7 @@ export async function GET(request: NextRequest) {
           console.log(`Swap succeeded but re-shielding failed. Output tokens remain in session wallet.`);
 
           // Still mark as success since the swap completed - user has their tokens
-          const outputDecimals = outputMint === SOL_MINT ? 9 : 6;
+          // outputDecimals already defined above
           const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
 
           await supabase
@@ -470,7 +480,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Update execution with success
-        const outputDecimals = outputMint === SOL_MINT ? 9 : 6;
+        // outputDecimals already defined above
         const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
 
         await supabase

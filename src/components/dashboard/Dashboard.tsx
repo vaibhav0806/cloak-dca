@@ -30,6 +30,7 @@ import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
+import { SessionWallet } from './SessionWallet';
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
 
 function getTokenInfo(mint: string) {
@@ -877,6 +878,9 @@ export function Dashboard() {
             </div>
           )}
         </section>
+
+        {/* Session Wallet - DCA'd tokens ready to withdraw */}
+        <SessionWallet sessionPublicKey={sessionKey} />
 
         {/* Recent Activity */}
         {(recentExecutions.length > 0 || walletTransactions.length > 0) && (

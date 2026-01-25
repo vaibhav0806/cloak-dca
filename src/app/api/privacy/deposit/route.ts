@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerPrivacyClient } from '@/lib/privacy/server';
-import { USDC_MINT, SOL_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
@@ -110,8 +110,11 @@ export async function POST(request: NextRequest) {
       const baseUnits = Math.floor(actualDepositAmount * 1e6);
       console.log(`Starting deposit of ${baseUnits} USDC base units (${actualDepositAmount} USDC)`);
       result = await privacyClient.depositUSDC(baseUnits);
+    } else if (tokenMint === CBBTC_MINT || tokenMint === ZEC_MINT) {
+      const baseUnits = Math.floor(amount * 1e8); // cbBTC and ZEC have 8 decimals
+      result = await privacyClient.depositSPL(tokenMint, baseUnits);
     } else {
-      const baseUnits = Math.floor(amount * 1e6); // Assume 6 decimals for other SPL
+      const baseUnits = Math.floor(amount * 1e6); // Default 6 decimals for other SPL
       result = await privacyClient.depositSPL(tokenMint, baseUnits);
     }
 

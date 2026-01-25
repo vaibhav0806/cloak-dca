@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerPrivacyClient } from '@/lib/privacy/server';
-import { USDC_MINT, SOL_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,8 +34,11 @@ export async function POST(request: NextRequest) {
     } else if (tokenMint === USDC_MINT) {
       const baseUnits = Math.floor(amount * 1e6);
       result = await privacyClient.withdrawUSDC(baseUnits, recipient);
+    } else if (tokenMint === CBBTC_MINT || tokenMint === ZEC_MINT) {
+      const baseUnits = Math.floor(amount * 1e8); // cbBTC and ZEC have 8 decimals
+      result = await privacyClient.withdrawSPL(tokenMint, baseUnits, recipient);
     } else {
-      const baseUnits = Math.floor(amount * 1e6); // Assume 6 decimals for other SPL
+      const baseUnits = Math.floor(amount * 1e6); // Default 6 decimals for other SPL
       result = await privacyClient.withdrawSPL(tokenMint, baseUnits, recipient);
     }
 

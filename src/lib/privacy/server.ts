@@ -8,7 +8,7 @@
  */
 
 import { Keypair, PublicKey } from '@solana/web3.js';
-import { USDC_MINT, SOL_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 
 interface DepositResult {
   tx: string;
@@ -323,6 +323,9 @@ export async function getTokenBalance(
   } else if (tokenMint === USDC_MINT) {
     baseUnits = await client.getPrivateBalanceUSDC();
     decimals = 6;
+  } else if (tokenMint === CBBTC_MINT || tokenMint === ZEC_MINT) {
+    baseUnits = await client.getPrivateBalanceSPL(tokenMint);
+    decimals = 8; // cbBTC and ZEC have 8 decimals
   } else {
     baseUnits = await client.getPrivateBalanceSPL(tokenMint);
     decimals = 6; // Default to 6 for other SPL tokens
