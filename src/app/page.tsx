@@ -280,46 +280,16 @@ function Landing() {
               </div>
             </div>
 
-            <div className="relative">
-              {/* Tech stack visualization */}
-              <div className="relative p-8 sm:p-10 rounded-2xl border border-border bg-gradient-to-br from-card/80 to-card/40 overflow-hidden">
-                {/* Decorative grid */}
-                <div className="absolute inset-0 opacity-[0.03]" style={{
-                  backgroundImage: `linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)`,
-                  backgroundSize: '24px 24px'
-                }} />
+            {/* Visual element */}
+            <div className="hidden lg:flex items-center justify-center">
+              <div className="relative">
+                {/* Glow */}
+                <div className="absolute inset-0 bg-accent/20 rounded-full blur-3xl scale-150" />
 
-                {/* Glow effect */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl" />
-
-                <div className="relative space-y-6">
-                  <div className="flex items-center gap-3 text-xs font-mono text-muted-foreground uppercase tracking-wider">
-                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-                    Tech Stack
-                  </div>
-
-                  <div className="space-y-4">
-                    <TechRow label="Privacy" value="Privacy.cash" />
-                    <TechRow label="Swaps" value="Jupiter Aggregator" />
-                    <TechRow label="Network" value="Solana" />
-                  </div>
-
-                  {/* Visual connector */}
-                  <div className="pt-6 border-t border-border/50">
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex -space-x-2">
-                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
-                          <Shield className="w-3.5 h-3.5 text-accent" />
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
-                          <Zap className="w-3.5 h-3.5 text-accent" />
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-accent/20 border-2 border-background flex items-center justify-center">
-                          <Lock className="w-3.5 h-3.5 text-accent" />
-                        </div>
-                      </div>
-                      <span className="text-muted-foreground">Integrated & battle-tested</span>
-                    </div>
+                {/* Shield icon */}
+                <div className="relative w-48 h-48 rounded-full border border-accent/20 bg-card/50 flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-full border border-accent/30 bg-accent/5 flex items-center justify-center">
+                    <Shield className="w-16 h-16 text-accent/80" />
                   </div>
                 </div>
               </div>
@@ -387,14 +357,6 @@ function SecurityFeature({ title, description }: { title: string; description: s
   );
 }
 
-function TechRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium font-mono">{value}</span>
-    </div>
-  );
-}
 
 
 function VisualDiagram({ type }: { type: 'problem' | 'solution' }) {
