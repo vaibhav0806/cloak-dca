@@ -85,47 +85,16 @@ function Header() {
 function Footer() {
   return (
     <footer className="border-t border-border bg-card/30">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-          <div className="col-span-2 md:col-span-1">
-            <span className="text-xl font-semibold tracking-tight">
-              cloak<span className="text-accent">.</span>
-            </span>
-            <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-              Private dollar-cost averaging on Solana. Trade without a trace.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-medium mb-4 text-sm">Product</h4>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a></li>
-              <li><a href="#security" className="hover:text-foreground transition-colors">Security</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-4 text-sm">Resources</h4>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Documentation</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Audit Report</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-medium mb-4 text-sm">Community</h4>
-            <ul className="space-y-3 text-sm text-muted-foreground">
-              <li><a href="#" className="hover:text-foreground transition-colors">Twitter</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Discord</a></li>
-              <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
-            </ul>
-          </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold tracking-tight">
+            cloak<span className="text-accent">.</span>
+          </span>
+          <span className="text-sm text-muted-foreground">— private dca on solana</span>
         </div>
-        <div className="pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © 2024 Cloak Protocol. All rights reserved.
-          </p>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms</a>
-          </div>
+        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <a href="#" className="hover:text-foreground transition-colors">GitHub</a>
+          <a href="#" className="hover:text-foreground transition-colors">Twitter</a>
         </div>
       </div>
     </footer>
