@@ -33,6 +33,17 @@ export interface Execution {
   executed_at: string;
 }
 
+export interface WalletTransaction {
+  id: string;
+  user_id: string;
+  type: 'deposit' | 'withdraw';
+  token_mint: string;
+  amount: number;
+  tx_signature: string | null;
+  status: 'success' | 'failed';
+  created_at: string;
+}
+
 export interface TokenInfo {
   symbol: string;
   name: string;

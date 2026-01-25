@@ -39,6 +39,29 @@ export async function POST(request: NextRequest) {
       result = await privacyClient.withdrawSPL(tokenMint, baseUnits, recipient);
     }
 
+    // Save transaction to database
+    try {
+      const walletAddress = request.headers.get('x-wallet-address');
+      if (walletAddress) {
+        await fetch(new URL('/api/transactions', request.url).toString(), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-wallet-address': walletAddress,
+          },
+          body: JSON.stringify({
+            type: 'withdraw',
+            token_mint: tokenMint,
+            amount,
+            tx_signature: result.tx,
+            status: 'success',
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to save transaction record:', e);
+    }
+
     return NextResponse.json({
       signature: result.tx,
       isPartial: result.isPartial,

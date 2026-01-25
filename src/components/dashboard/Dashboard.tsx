@@ -28,7 +28,7 @@ import {
 import { formatDistanceToNow, format } from 'date-fns';
 import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
-import type { DCAConfig, Execution } from '@/types';
+import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
 
@@ -36,6 +36,43 @@ function getTokenInfo(mint: string) {
   const token = Object.values(TOKENS).find((t) => t.mint === mint);
   return token || { symbol: mint.slice(0, 4), name: 'Unknown', decimals: 9, mint, logoURI: undefined };
 }
+
+// Calculate which DCAs will be funded based on available balance
+// Returns a map of DCA id -> { funded: boolean, position: number }
+function calculateDCAFundingStatus(
+  activeConfigs: DCAConfig[],
+  totalBalance: number
+): Map<string, { funded: boolean; position: number; shortfall: number }> {
+  const result = new Map<string, { funded: boolean; position: number; shortfall: number }>();
+
+  if (activeConfigs.length === 0) return result;
+
+  // Sort by next execution time (earliest first)
+  const sortedConfigs = [...activeConfigs]
+    .filter(c => c.status === 'active')
+    .sort((a, b) => new Date(a.next_execution).getTime() - new Date(b.next_execution).getTime());
+
+  let remainingBalance = totalBalance;
+
+  sortedConfigs.forEach((config, index) => {
+    const requiredAmount = config.amount_per_trade;
+    const funded = remainingBalance >= requiredAmount;
+    const shortfall = funded ? 0 : requiredAmount - remainingBalance;
+
+    result.set(config.id, {
+      funded,
+      position: index + 1,
+      shortfall,
+    });
+
+    if (funded) {
+      remainingBalance -= requiredAmount;
+    }
+  });
+
+  return result;
+}
+
 
 export function Dashboard() {
   const { publicKey, sendTransaction } = useWallet();
@@ -56,9 +93,12 @@ export function Dashboard() {
   const [sessionUsdcBalance, setSessionUsdcBalance] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [recentExecutions, setRecentExecutions] = useState<Array<Execution & { input_token: string; output_token: string }>>([]);
+  const [walletTransactions, setWalletTransactions] = useState<WalletTransaction[]>([]);
   const [depositSuccess, setDepositSuccess] = useState(false);
   const [depositTx, setDepositTx] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activityPage, setActivityPage] = useState(0);
+  const ACTIVITY_PAGE_SIZE = 5;
 
   // Setup flow states
   const [setupStep, setSetupStep] = useState<'checking' | 'fund_gas' | 'ready' | 'depositing'>('checking');
@@ -79,6 +119,14 @@ export function Dashboard() {
   const hasShieldedBalance = totalShielded > 0;
   const hasStrategies = allStrategies.length > 0;
   const sessionFunded = sessionBalance !== null && sessionBalance >= 0.005;
+
+  // Calculate DCA funding status
+  const dcaFundingStatus = calculateDCAFundingStatus(activeConfigs, totalShielded);
+  const totalDCARequirement = activeConfigs
+    .filter(c => c.status === 'active')
+    .reduce((sum, config) => sum + config.amount_per_trade, 0);
+  const hasUnderfundedDCAs = totalShielded < totalDCARequirement && activeConfigs.length > 0;
+  const fundingShortfall = Math.max(0, totalDCARequirement - totalShielded);
 
   // Determine if user needs onboarding
   const needsOnboarding = !hasShieldedBalance && !hasStrategies;
@@ -157,18 +205,38 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, [sessionKey, setupStep]);
 
-  // Fetch recent executions
+  // Fetch recent executions and transactions
   useEffect(() => {
-    if (publicKey && hasStrategies) {
-      fetchRecentExecutions();
+    if (publicKey) {
+      fetchRecentActivity();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicKey, hasStrategies]);
 
-  const fetchRecentExecutions = async () => {
+  const fetchRecentActivity = async () => {
     if (!publicKey || !isMounted.current) return;
+    const walletAddress = publicKey.toBase58();
+
+    // Fetch wallet transactions (deposits/withdrawals)
     try {
-      const walletAddress = publicKey.toBase58();
+      const txResponse = await fetch('/api/transactions', {
+        headers: { 'x-wallet-address': walletAddress },
+      });
+      if (txResponse.ok && isMounted.current) {
+        const data = await txResponse.json();
+        setWalletTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet transactions:', error);
+    }
+
+    // Fetch trade executions if there are strategies
+    if (!hasStrategies) {
+      setRecentExecutions([]);
+      return;
+    }
+
+    try {
       const configsResponse = await fetch('/api/dca/list', {
         headers: { 'x-wallet-address': walletAddress },
       });
@@ -339,7 +407,9 @@ export function Dashboard() {
       setDepositTx(result?.signature || null);
       setSetupStep('ready');
 
-      // Refresh balances
+      // Refresh activity immediately, then balances with delays
+      fetchRecentActivity();
+
       const delays = [3000, 5000, 8000];
       for (const delay of delays) {
         if (!isMounted.current) return;
@@ -366,6 +436,7 @@ export function Dashboard() {
       setWithdrawToken('');
       setShowWithdraw(false);
       fetchBalances(true);
+      fetchRecentActivity();
     } catch (error) {
       console.error('Withdraw failed:', error);
     } finally {
@@ -732,6 +803,43 @@ export function Dashboard() {
             </Button>
           </div>
 
+          {/* Low gas (SOL) warning */}
+          {!sessionFunded && hasStrategies && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                <span className="text-red-400/90">
+                  Low gas — need <span className="font-mono">0.005 SOL</span>, have <span className="font-mono">{sessionBalance?.toFixed(4) || '0'}</span>
+                </span>
+              </div>
+              <button
+                onClick={copySessionKey}
+                className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
+              >
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied ? 'Copied' : 'Copy address'}
+              </button>
+            </div>
+          )}
+
+          {/* Low USDC balance notice */}
+          {hasUnderfundedDCAs && (
+            <div className="mb-4 px-4 py-3 rounded-lg bg-orange-500/5 border border-orange-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
+                <span className="text-orange-400/90">
+                  Need <span className="font-mono">${totalDCARequirement.toFixed(2)}</span> for next trades, short <span className="font-mono">${fundingShortfall.toFixed(2)}</span>
+                </span>
+              </div>
+              <button
+                onClick={() => { setShowDeposit(true); setShowWithdraw(false); }}
+                className="text-xs text-orange-400 hover:text-orange-300 transition-colors"
+              >
+                Add funds
+              </button>
+            </div>
+          )}
+
           {configsLoading ? (
             <div className="space-y-3">
               {[1, 2].map((i) => (
@@ -751,60 +859,153 @@ export function Dashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {allStrategies.map((config) => (
-                <StrategyCard
-                  key={config.id}
-                  config={config}
-                  isExpanded={expandedStrategy === config.id}
-                  onToggle={() => setExpandedStrategy(expandedStrategy === config.id ? null : config.id)}
-                  onPause={pauseDCA}
-                  onResume={resumeDCA}
-                  onCancel={cancelDCA}
-                />
-              ))}
+              {allStrategies.map((config) => {
+                const fundingInfo = dcaFundingStatus.get(config.id);
+                return (
+                  <StrategyCard
+                    key={config.id}
+                    config={config}
+                    isExpanded={expandedStrategy === config.id}
+                    onToggle={() => setExpandedStrategy(expandedStrategy === config.id ? null : config.id)}
+                    onPause={pauseDCA}
+                    onResume={resumeDCA}
+                    onCancel={cancelDCA}
+                    fundingStatus={fundingInfo}
+                  />
+                );
+              })}
             </div>
           )}
         </section>
 
         {/* Recent Activity */}
-        {recentExecutions.length > 0 && (
+        {(recentExecutions.length > 0 || walletTransactions.length > 0) && (
           <section className="mb-14">
             <h2 className="text-lg font-medium mb-5">Recent Activity</h2>
-            <div className="space-y-1">
-              {recentExecutions.map((exec) => {
-                const inputToken = getTokenInfo(exec.input_token);
-                const outputToken = getTokenInfo(exec.output_token);
-                const isSuccess = exec.status === 'success';
+            {(() => {
+              type Activity =
+                | { type: 'trade'; data: typeof recentExecutions[0]; date: Date }
+                | { type: 'deposit' | 'withdraw'; data: WalletTransaction; date: Date };
 
-                return (
-                  <div key={exec.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isSuccess ? 'bg-green-500' : 'bg-red-500'}`} />
-                      <div>
-                        <p className="text-sm">
-                          <span className="font-medium">{exec.input_amount} {inputToken.symbol}</span>
-                          <span className="text-muted-foreground mx-1.5">→</span>
-                          <span className="font-medium">{exec.output_amount?.toFixed(4) || '—'} {outputToken.symbol}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(exec.executed_at), 'MMM d, h:mm a')}
-                        </p>
-                      </div>
-                    </div>
-                    {exec.tx_signature && (
-                      <a
-                        href={getExplorerUrl(exec.tx_signature)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-accent transition-colors p-1.5"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
+              const activities: Activity[] = [
+                ...recentExecutions.map(exec => ({
+                  type: 'trade' as const,
+                  data: exec,
+                  date: new Date(exec.executed_at),
+                })),
+                ...walletTransactions.map(tx => ({
+                  type: tx.type,
+                  data: tx,
+                  date: new Date(tx.created_at),
+                })),
+              ];
+
+              activities.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+              const totalPages = Math.ceil(activities.length / ACTIVITY_PAGE_SIZE);
+              const paginatedActivities = activities.slice(
+                activityPage * ACTIVITY_PAGE_SIZE,
+                (activityPage + 1) * ACTIVITY_PAGE_SIZE
+              );
+
+              return (
+                <>
+                  <div className="space-y-1">
+                    {paginatedActivities.map((activity) => {
+                      if (activity.type === 'trade') {
+                        const exec = activity.data as typeof recentExecutions[0];
+                        const inputToken = getTokenInfo(exec.input_token);
+                        const outputToken = getTokenInfo(exec.output_token);
+                        const isSuccess = exec.status === 'success';
+
+                        return (
+                          <div key={`trade-${exec.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${isSuccess ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div>
+                                <p className="text-sm">
+                                  <span className="font-medium">{exec.input_amount} {inputToken.symbol}</span>
+                                  <span className="text-muted-foreground mx-1.5">→</span>
+                                  <span className="font-medium">{exec.output_amount?.toFixed(4) || '—'} {outputToken.symbol}</span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(activity.date, 'MMM d, h:mm a')}
+                                </p>
+                              </div>
+                            </div>
+                            {exec.tx_signature && (
+                              <a
+                                href={getExplorerUrl(exec.tx_signature)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      } else {
+                        const tx = activity.data as WalletTransaction;
+                        const token = getTokenInfo(tx.token_mint);
+                        const isDeposit = activity.type === 'deposit';
+
+                        return (
+                          <div key={`tx-${tx.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${isDeposit ? 'bg-accent' : 'bg-orange-500'}`} />
+                              <div>
+                                <p className="text-sm">
+                                  <span className="font-medium">{isDeposit ? 'Deposited' : 'Withdrew'}</span>
+                                  <span className="text-muted-foreground mx-1.5">{tx.amount.toFixed(2)}</span>
+                                  <span className="font-medium">{token.symbol}</span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(activity.date, 'MMM d, h:mm a')}
+                                </p>
+                              </div>
+                            </div>
+                            {tx.tx_signature && (
+                              <a
+                                href={getExplorerUrl(tx.tx_signature)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
+                        );
+                      }
+                    })}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
+                      <button
+                        onClick={() => setActivityPage(p => Math.max(0, p - 1))}
+                        disabled={activityPage === 0}
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
+                      >
+                        ← Newer
+                      </button>
+                      <span className="text-xs text-muted-foreground/60 tabular-nums">
+                        {activityPage + 1} / {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setActivityPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={activityPage >= totalPages - 1}
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
+                      >
+                        Older →
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </section>
         )}
 
@@ -862,6 +1063,7 @@ function StrategyCard({
   onPause,
   onResume,
   onCancel,
+  fundingStatus,
 }: {
   config: DCAConfig;
   isExpanded: boolean;
@@ -869,12 +1071,14 @@ function StrategyCard({
   onPause: (id: string) => Promise<void>;
   onResume: (id: string) => Promise<void>;
   onCancel: (id: string) => Promise<void>;
+  fundingStatus?: { funded: boolean; position: number; shortfall: number };
 }) {
   const inputToken = getTokenInfo(config.input_token);
   const outputToken = getTokenInfo(config.output_token);
   const progress = (config.completed_trades / config.total_trades) * 100;
   const isActive = config.status === 'active';
   const isPaused = config.status === 'paused';
+  const isUnderfunded = fundingStatus && !fundingStatus.funded && isActive;
 
   return (
     <div className="rounded-lg bg-card border border-border overflow-hidden">
@@ -908,6 +1112,11 @@ function StrategyCard({
         </div>
 
         <div className="flex items-center gap-3">
+          {isUnderfunded && (
+            <div className="w-5 h-5 rounded-full bg-orange-500/20 flex items-center justify-center" title="Low balance">
+              <span className="text-orange-400 text-xs font-medium">!</span>
+            </div>
+          )}
           <div className="flex items-center gap-1.5">
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500' : isPaused ? 'bg-yellow-500' : 'bg-muted-foreground'}`} />
             <span className="text-xs text-muted-foreground capitalize">{config.status}</span>
@@ -942,6 +1151,14 @@ function StrategyCard({
               </p>
             </div>
           </div>
+
+          {/* Funding note - only shown when underfunded */}
+          {isUnderfunded && fundingStatus && (
+            <div className="flex items-center gap-2 text-xs text-orange-400/90 mb-4">
+              <div className="w-1 h-1 rounded-full bg-orange-400/90" />
+              <span>Low balance — needs ${config.amount_per_trade}, short ${fundingStatus.shortfall.toFixed(2)}</span>
+            </div>
+          )}
 
           <div className="flex gap-2">
             {isActive && (

@@ -26,14 +26,14 @@ import {
   FREQUENCY_OPTIONS,
 } from '@/lib/solana/constants';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import type { TokenInfo } from '@/types';
+import type { TokenInfo, DCAConfig } from '@/types';
 
 // Privacy Cash has a minimum withdrawal of ~1 USDC to prevent correlation attacks
 const MIN_AMOUNT_PER_TRADE = 1;
 
 export function CreateDCAModal() {
   const { isCreateModalOpen, setCreateModalOpen } = useAppStore();
-  const { createDCA } = useDCAConfigs();
+  const { createDCA, getActiveConfigs } = useDCAConfigs();
   const { balances } = useShieldedBalance();
 
   const [inputToken, setInputToken] = useState<TokenInfo | null>(SUPPORTED_INPUT_TOKENS[0]);
@@ -55,6 +55,15 @@ export function CreateDCAModal() {
   const estimatedDuration = totalTrades > 0
     ? `${Math.ceil((totalTrades * frequencyHours) / 24)} days`
     : '—';
+
+  // Calculate if this new DCA would cause underfunding
+  const activeConfigs = getActiveConfigs();
+  const existingDCARequirement = activeConfigs
+    .filter((c: DCAConfig) => c.input_token === inputToken?.mint)
+    .reduce((sum: number, c: DCAConfig) => sum + c.amount_per_trade, 0);
+  const newPerTradeAmount = parseFloat(amountPerTrade) || 0;
+  const totalRequiredPerRound = existingDCARequirement + newPerTradeAmount;
+  const wouldBeUnderfunded = newPerTradeAmount > 0 && totalRequiredPerRound > inputBalance;
 
   const handleSubmit = async () => {
     if (!inputToken || !outputToken) {
@@ -79,10 +88,6 @@ export function CreateDCAModal() {
     }
     if (perTrade > total) {
       setError('Per-trade exceeds total');
-      return;
-    }
-    if (total > inputBalance) {
-      setError('Insufficient balance');
       return;
     }
 
@@ -240,6 +245,12 @@ export function CreateDCAModal() {
                   <p className="text-mono">{estimatedDuration}</p>
                 </div>
               </div>
+              {wouldBeUnderfunded && (
+                <div className="flex items-center gap-2 text-xs text-orange-400/90 mt-3 pt-3 border-t border-border/50">
+                  <div className="w-1 h-1 rounded-full bg-orange-400/90" />
+                  <span>Balance may not cover all active DCAs</span>
+                </div>
+              )}
             </div>
           )}
 
