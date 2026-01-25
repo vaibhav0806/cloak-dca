@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Shield, Lock, Zap, Eye, EyeOff, ChevronRight, Check, ArrowUpRight } from 'lucide-react';
+import { Shield, Lock, Zap, Eye, EyeOff, Check, ArrowUpRight } from 'lucide-react';
 
 export default function Home() {
   const { connected, connecting } = useWallet();
@@ -74,9 +74,6 @@ function Header() {
           <a href="#security" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
             Security
           </a>
-          <a href="#faq" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
-            FAQ
-          </a>
         </nav>
 
         <WalletButton />
@@ -103,7 +100,6 @@ function Footer() {
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it works</a></li>
               <li><a href="#security" className="hover:text-foreground transition-colors">Security</a></li>
-              <li><a href="#faq" className="hover:text-foreground transition-colors">FAQ</a></li>
             </ul>
           </div>
           <div>
@@ -325,46 +321,11 @@ function Landing() {
             </div>
 
             <div className="grid grid-cols-2 gap-4 sm:gap-6 content-start">
-              <TechCard title="Privacy Protocol" value="Light Protocol" />
-              <TechCard title="Proof System" value="Groth16" />
+              <TechCard title="Privacy Layer" value="Privacy.cash" />
+              <TechCard title="Encryption" value="AES-256-GCM" />
               <TechCard title="DEX Aggregator" value="Jupiter" />
               <TechCard title="Network" value="Solana" />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section id="faq" className="relative py-16 sm:py-24 lg:py-32 border-t border-border">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 sm:mb-16">
-            <p className="text-accent text-sm font-medium mb-4">FAQ</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
-              Common questions
-            </h2>
-          </div>
-
-          <div className="space-y-4">
-            <FAQItem
-              question="How does Cloak protect my privacy?"
-              answer="Cloak uses zero-knowledge proofs to break the on-chain link between your deposit and your trades. When you deposit, your funds enter a shielded pool. When trades execute, they come from this pool—not your wallet. This makes it cryptographically impossible to connect your identity to your trading activity."
-            />
-            <FAQItem
-              question="Is Cloak custodial?"
-              answer="No. Cloak is fully non-custodial. You maintain control of your funds at all times through cryptographic proofs. We never have access to your private keys or the ability to move your funds."
-            />
-            <FAQItem
-              question="What tokens can I accumulate?"
-              answer="Currently, you can deposit USDC and accumulate SOL, BONK, and other major Solana tokens. We're continuously adding support for more assets based on liquidity and demand."
-            />
-            <FAQItem
-              question="How are trades executed?"
-              answer="Trades are routed through Jupiter, Solana's leading DEX aggregator, ensuring you get the best available prices across all major DEXs. The protocol executes trades from the privacy pool on your specified schedule."
-            />
-            <FAQItem
-              question="What are the fees?"
-              answer="Cloak charges a small protocol fee on each trade execution. You'll also pay standard Solana network fees. There are no deposit or withdrawal fees."
-            />
           </div>
         </div>
       </section>
@@ -460,26 +421,6 @@ function TechCard({ title, value }: { title: string; value: string }) {
   );
 }
 
-function FAQItem({ question, answer }: { question: string; answer: string }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 sm:p-6 text-left hover:bg-card/50 transition-colors"
-      >
-        <span className="font-medium text-sm sm:text-base pr-4">{question}</span>
-        <ChevronRight className={`h-5 w-5 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
-      </button>
-      {isOpen && (
-        <div className="px-4 sm:px-6 pb-4 sm:pb-6">
-          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{answer}</p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function VisualDiagram({ type }: { type: 'problem' | 'solution' }) {
   if (type === 'problem') {
