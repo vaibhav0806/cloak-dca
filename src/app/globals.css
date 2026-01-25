@@ -1,6 +1,6 @@
-/* Void Theme - Pure black, coral accent, maximum contrast */
+/* Cloak - Clean, professional design */
 
-/* Prevent FOUC - critical styles before Tailwind loads */
+/* Prevent FOUC */
 html {
   background-color: #000000;
   color: #ffffff;
@@ -88,7 +88,7 @@ html {
 }
 
 /* ============================================
-   TYPOGRAPHY - Minimal, impactful
+   TYPOGRAPHY
    ============================================ */
 
 .text-display {
@@ -148,7 +148,6 @@ html {
    COMPONENTS
    ============================================ */
 
-/* Card - Floating in void */
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -159,7 +158,6 @@ html {
   border-color: #333333;
 }
 
-/* Divider */
 .divider {
   height: 1px;
   background: var(--border);
@@ -352,67 +350,20 @@ input:focus {
   }
 }
 
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes glow {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
-}
-
-@keyframes orbit {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes fadeInOut {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 0.8; }
-}
-
-/* 3D Privacy Globe */
-.globe-container {
-  position: relative;
-  transform-style: preserve-3d;
-}
-
-.globe-sphere {
-  position: relative;
-  transform-style: preserve-3d;
-}
-
-.globe-particle {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px var(--accent), 0 0 12px var(--accent);
-  animation: particlePulse 3s ease-in-out infinite;
-  backface-visibility: visible;
-}
-
-.globe-connection {
-  position: absolute;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.15;
-  backface-visibility: visible;
-}
-
-@keyframes globeRotate {
-  from {
-    transform: rotateY(0deg) rotateX(-10deg);
-  }
-  to {
-    transform: rotateY(360deg) rotateX(-10deg);
-  }
-}
-
-@keyframes particlePulse {
-  0%, 100% {
-    opacity: 0.6;
-    box-shadow: 0 0 4px var(--accent), 0 0 8px var(--accent);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 8px var(--accent), 0 0 16px var(--accent), 0 0 24px var(--accent);
-  }
 }
 
 .animate-in {
@@ -439,7 +390,7 @@ input:focus {
   box-shadow: 0 0 40px rgba(255, 99, 71, 0.1);
 }
 
-/* Coral accent underline */
+/* Accent underline */
 .accent-underline {
   position: relative;
   display: inline-block;
