@@ -20,28 +20,25 @@ import {
   RefreshCw,
   ChevronDown,
   Wallet,
-  Circle,
-  ArrowRight,
-  Zap,
   AlertCircle,
+  ChevronRight,
+  Shield,
+  Settings,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution } from '@/types';
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
 
 function getTokenInfo(mint: string) {
   const token = Object.values(TOKENS).find((t) => t.mint === mint);
   return token || { symbol: mint.slice(0, 4), name: 'Unknown', decimals: 9, mint, logoURI: undefined };
 }
 
-// Onboarding step type
-type OnboardingStep = 'fund_session' | 'transfer_usdc' | 'shield_tokens' | 'create_strategy' | 'complete';
-
 export function Dashboard() {
-  const { publicKey } = useWallet();
+  const { publicKey, sendTransaction } = useWallet();
   const { balances, isLoading: balancesLoading, hasFetched: hasFetchedBalances, fetchBalances, deposit, withdraw, getSessionPublicKey, isInitialized } = useShieldedBalance();
   const { isLoading: configsLoading, getActiveConfigs, getPausedConfigs, pauseDCA, resumeDCA, cancelDCA } = useDCAConfigs();
   const { setCreateModalOpen } = useAppStore();
@@ -61,14 +58,17 @@ export function Dashboard() {
   const [recentExecutions, setRecentExecutions] = useState<Array<Execution & { input_token: string; output_token: string }>>([]);
   const [depositSuccess, setDepositSuccess] = useState(false);
   const [depositTx, setDepositTx] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Track mounted state to prevent state updates after unmount
+  // Setup flow states
+  const [setupStep, setSetupStep] = useState<'checking' | 'fund_gas' | 'ready' | 'depositing'>('checking');
+  const [setupError, setSetupError] = useState<string | null>(null);
+
+  // Track mounted state
   const isMounted = useRef(true);
   useEffect(() => {
     isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
+    return () => { isMounted.current = false; };
   }, []);
 
   const activeConfigs = getActiveConfigs();
@@ -78,29 +78,10 @@ export function Dashboard() {
   const totalShielded = balances.reduce((acc, b) => acc + (b.usdValue || 0), 0);
   const hasShieldedBalance = totalShielded > 0;
   const hasStrategies = allStrategies.length > 0;
-  const sessionFunded = sessionBalance !== null && sessionBalance >= 0.01; // At least 0.01 SOL
-  const sessionHasUsdc = sessionUsdcBalance !== null && sessionUsdcBalance > 0; // Any USDC
+  const sessionFunded = sessionBalance !== null && sessionBalance >= 0.005;
 
-  // Determine onboarding step
-  const getOnboardingStep = (): OnboardingStep => {
-    if (!sessionFunded) return 'fund_session';
-
-    // If user already has shielded balance OR just completed a deposit, skip to strategy creation
-    if (hasShieldedBalance || depositSuccess) {
-      if (!hasStrategies) return 'create_strategy';
-      return 'complete';
-    }
-
-    // No shielded balance yet - check if they need to transfer USDC
-    if (!sessionHasUsdc) return 'transfer_usdc';
-    return 'shield_tokens';
-  };
-
-  // Wait for initial data to load before deciding onboarding state
-  const isInitialLoading = !hasFetchedBalances || sessionBalance === null;
-
-  const onboardingStep = getOnboardingStep();
-  const isOnboarding = onboardingStep !== 'complete';
+  // Determine if user needs onboarding
+  const needsOnboarding = !hasShieldedBalance && !hasStrategies;
 
   // Fetch session key and balance
   useEffect(() => {
@@ -108,45 +89,41 @@ export function Dashboard() {
       getSessionPublicKey().then(async (key) => {
         if (!isMounted.current) return;
         setSessionKey(key);
-        // Fetch SOL balance of session wallet
         try {
           const connection = getConnection();
           const balance = await connection.getBalance(new PublicKey(key));
           if (!isMounted.current) return;
           setSessionBalance(balance / LAMPORTS_PER_SOL);
+
+          // Check USDC balance
+          const usdcMint = new PublicKey(USDC_MINT);
+          const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(key));
+          const accountInfo = await connection.getAccountInfo(ata);
+          if (accountInfo && isMounted.current) {
+            const data = accountInfo.data;
+            const usdcBalance = data.readBigUInt64LE(64);
+            setSessionUsdcBalance(Number(usdcBalance) / 1e6);
+          } else if (isMounted.current) {
+            setSessionUsdcBalance(0);
+          }
+
+          // Determine setup step
+          if (balance >= 0.005 * LAMPORTS_PER_SOL) {
+            setSetupStep('ready');
+          } else {
+            setSetupStep('fund_gas');
+          }
         } catch (e) {
           console.error('Failed to fetch session balance:', e);
-          if (isMounted.current) setSessionBalance(0);
+          if (isMounted.current) {
+            setSessionBalance(0);
+            setSessionUsdcBalance(0);
+            setSetupStep('fund_gas');
+          }
         }
       }).catch(console.error);
     }
   }, [isInitialized, sessionKey, getSessionPublicKey]);
-
-  // Fetch session wallet USDC balance
-  useEffect(() => {
-    if (!sessionKey) return;
-    const fetchUsdcBalance = async () => {
-      try {
-        const connection = getConnection();
-        const sessionPubkey = new PublicKey(sessionKey);
-        const usdcMint = new PublicKey(USDC_MINT);
-        const ata = await getAssociatedTokenAddress(usdcMint, sessionPubkey);
-        const accountInfo = await connection.getAccountInfo(ata);
-        if (!isMounted.current) return;
-        if (accountInfo) {
-          const data = accountInfo.data;
-          const balance = data.readBigUInt64LE(64);
-          setSessionUsdcBalance(Number(balance) / 1e6);
-        } else {
-          setSessionUsdcBalance(0);
-        }
-      } catch (e) {
-        console.error('Failed to fetch session USDC balance:', e);
-        if (isMounted.current) setSessionUsdcBalance(0);
-      }
-    };
-    fetchUsdcBalance();
-  }, [sessionKey]);
 
   // Refresh session balance periodically
   useEffect(() => {
@@ -158,31 +135,35 @@ export function Dashboard() {
         const balance = await connection.getBalance(new PublicKey(sessionKey));
         if (!isMounted.current) return;
         setSessionBalance(balance / LAMPORTS_PER_SOL);
+
         // Also refresh USDC balance
-        const sessionPubkey = new PublicKey(sessionKey);
         const usdcMint = new PublicKey(USDC_MINT);
-        const ata = await getAssociatedTokenAddress(usdcMint, sessionPubkey);
+        const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(sessionKey));
         const accountInfo = await connection.getAccountInfo(ata);
-        if (!isMounted.current) return;
-        if (accountInfo) {
+        if (accountInfo && isMounted.current) {
           const data = accountInfo.data;
           const usdcBalance = data.readBigUInt64LE(64);
           setSessionUsdcBalance(Number(usdcBalance) / 1e6);
         }
+
+        // Update setup step if funded
+        if (balance >= 0.005 * LAMPORTS_PER_SOL && setupStep === 'fund_gas') {
+          setSetupStep('ready');
+        }
       } catch (e) {
         console.error('Failed to refresh session balance:', e);
       }
-    }, 30000);
+    }, 10000);
     return () => clearInterval(interval);
-  }, [sessionKey]);
+  }, [sessionKey, setupStep]);
 
   // Fetch recent executions
   useEffect(() => {
-    if (publicKey && !isOnboarding) {
+    if (publicKey && hasStrategies) {
       fetchRecentExecutions();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [publicKey, isOnboarding]);
+  }, [publicKey, hasStrategies]);
 
   const fetchRecentExecutions = async () => {
     if (!publicKey || !isMounted.current) return;
@@ -225,19 +206,92 @@ export function Dashboard() {
   };
 
   const handleDeposit = async () => {
-    if (!depositAmount || isNaN(Number(depositAmount))) return;
+    if (!depositAmount || isNaN(Number(depositAmount)) || !publicKey || !sessionKey) return;
+
+    // Check if session wallet needs gas
+    if (!sessionFunded) {
+      setSetupStep('fund_gas');
+      return;
+    }
+
     setIsDepositing(true);
+    setSetupStep('depositing');
     setDepositSuccess(false);
+    setSetupError(null);
+
     try {
-      const usdcMint = balances[0]?.token.mint || 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
-      const result = await deposit(usdcMint, Number(depositAmount));
+      const connection = getConnection();
+      const usdcMint = new PublicKey(USDC_MINT);
+      const sessionPublicKey = new PublicKey(sessionKey);
+      const amount = Number(depositAmount);
+      const amountInBaseUnits = Math.floor(amount * 1e6); // USDC has 6 decimals
+
+      // Step 1: Transfer USDC from main wallet to session wallet
+      console.log(`Transferring ${amount} USDC from main wallet to session wallet...`);
+
+      // Get or create ATAs
+      const sourceAta = await getAssociatedTokenAddress(usdcMint, publicKey);
+      const destAta = await getAssociatedTokenAddress(usdcMint, sessionPublicKey);
+
+      const transaction = new Transaction();
+
+      // Check if destination ATA exists, if not create it
+      try {
+        await getAccount(connection, destAta);
+      } catch (error) {
+        if (error instanceof TokenAccountNotFoundError) {
+          transaction.add(
+            createAssociatedTokenAccountInstruction(
+              publicKey, // payer
+              destAta,   // ata
+              sessionPublicKey, // owner
+              usdcMint   // mint
+            )
+          );
+        } else {
+          throw error;
+        }
+      }
+
+      // Add transfer instruction
+      transaction.add(
+        createTransferInstruction(
+          sourceAta,
+          destAta,
+          publicKey,
+          amountInBaseUnits
+        )
+      );
+
+      // Get recent blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      // Sign and send transaction using wallet adapter
+      const transferSig = await sendTransaction(transaction, connection);
+      console.log(`USDC transfer signature: ${transferSig}`);
+
+      // Wait for confirmation
+      await connection.confirmTransaction({
+        signature: transferSig,
+        blockhash,
+        lastValidBlockHeight,
+      }, 'confirmed');
+      console.log('USDC transfer confirmed');
+
+      // Step 2: Now deposit the USDC into the privacy pool
+      console.log(`Depositing ${amount} USDC into privacy pool...`);
+      const result = await deposit(USDC_MINT, amount);
+
       if (!isMounted.current) return;
       setDepositAmount('');
       setShowDeposit(false);
       setDepositSuccess(true);
       setDepositTx(result?.signature || null);
+      setSetupStep('ready');
 
-      // Give the indexer time to process the deposit before refreshing
+      // Refresh balances
       const delays = [3000, 5000, 8000];
       for (const delay of delays) {
         if (!isMounted.current) return;
@@ -247,6 +301,8 @@ export function Dashboard() {
       }
     } catch (error) {
       console.error('Deposit failed:', error);
+      setSetupError(error instanceof Error ? error.message : 'Deposit failed');
+      setSetupStep('ready');
     } finally {
       if (isMounted.current) setIsDepositing(false);
     }
@@ -277,8 +333,8 @@ export function Dashboard() {
     }
   };
 
-  // Show loading state while fetching initial data
-  if (isInitialLoading) {
+  // Loading state
+  if (!hasFetchedBalances || sessionBalance === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="relative">
@@ -289,48 +345,204 @@ export function Dashboard() {
     );
   }
 
-  // Show onboarding if not complete
-  if (isOnboarding) {
+  // New user onboarding - simplified one-step flow
+  if (needsOnboarding) {
     return (
       <div className="min-h-screen pt-24 pb-20">
         <div className="max-w-xl mx-auto px-6">
-          <OnboardingFlow
-            step={onboardingStep}
-            sessionKey={sessionKey}
-            sessionBalance={sessionBalance}
-            sessionUsdcBalance={sessionUsdcBalance}
-            onCopySessionKey={copySessionKey}
-            copied={copied}
-            onShieldClick={() => setShowDeposit(true)}
-            showDeposit={showDeposit}
-            depositAmount={depositAmount}
-            setDepositAmount={setDepositAmount}
-            onDeposit={handleDeposit}
-            isDepositing={isDepositing}
-            depositSuccess={depositSuccess}
-            depositTx={depositTx}
-            onCreateStrategy={() => setCreateModalOpen(true)}
-            onRefreshBalance={async () => {
-              if (sessionKey) {
-                const connection = getConnection();
-                const balance = await connection.getBalance(new PublicKey(sessionKey));
-                setSessionBalance(balance / LAMPORTS_PER_SOL);
-                // Also refresh USDC balance
-                const sessionPubkey = new PublicKey(sessionKey);
-                const usdcMint = new PublicKey(USDC_MINT);
-                const ata = await getAssociatedTokenAddress(usdcMint, sessionPubkey);
-                const accountInfo = await connection.getAccountInfo(ata);
-                if (accountInfo) {
-                  const data = accountInfo.data;
-                  const usdcBalance = data.readBigUInt64LE(64);
-                  setSessionUsdcBalance(Number(usdcBalance) / 1e6);
-                } else {
-                  setSessionUsdcBalance(0);
-                }
-              }
-            }}
-            onRefreshShieldedBalance={() => fetchBalances(true)}
-          />
+          {/* Header */}
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-6">
+              <Shield className="h-4 w-4 text-accent" />
+              <span className="text-sm text-accent">Private DCA</span>
+            </div>
+            <h1 className="text-3xl font-light mb-3">Start Accumulating Privately</h1>
+            <p className="text-muted-foreground">
+              Deposit funds to begin automated, untraceable dollar-cost averaging.
+            </p>
+          </div>
+
+          {/* Main Card */}
+          <div className="rounded-xl bg-card border border-border overflow-hidden">
+            {/* Gas funding step */}
+            {setupStep === 'fund_gas' && (
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <Wallet className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="font-medium">One-time Setup</h2>
+                    <p className="text-sm text-muted-foreground">Send ~0.05 SOL for transaction fees</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-muted/50 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">Send SOL to this address</span>
+                    <button
+                      onClick={copySessionKey}
+                      className="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
+                    >
+                      {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                  <code className="text-xs text-mono break-all">{sessionKey || 'Loading...'}</code>
+                </div>
+
+                <div className="flex items-center justify-between p-4 rounded-lg border border-border mb-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Current Balance</p>
+                    <p className="text-lg font-medium text-mono">{sessionBalance?.toFixed(4) || '0'} SOL</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (sessionKey) {
+                        const connection = getConnection();
+                        const balance = await connection.getBalance(new PublicKey(sessionKey));
+                        setSessionBalance(balance / LAMPORTS_PER_SOL);
+                        if (balance >= 0.005 * LAMPORTS_PER_SOL) {
+                          setSetupStep('ready');
+                        }
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  This SOL covers gas fees for your automatic DCA trades. You only need to do this once.
+                </p>
+              </div>
+            )}
+
+            {/* Ready to deposit */}
+            {setupStep === 'ready' && (
+              <div className="p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 rounded-lg bg-accent/10">
+                    <ArrowDownToLine className="h-5 w-5 text-accent" />
+                  </div>
+                  <div>
+                    <h2 className="font-medium">Deposit USDC</h2>
+                    <p className="text-sm text-muted-foreground">Add funds to your private balance</p>
+                  </div>
+                </div>
+
+                {setupError && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-4 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                    <p className="text-sm text-destructive">{setupError}</p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div>
+                    <input
+                      type="number"
+                      placeholder="Amount (USDC)"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      className="w-full px-4 py-3 bg-background border border-border rounded-lg text-mono text-lg"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Quick amounts */}
+                  <div className="flex gap-2">
+                    {[10, 50, 100, 500].map((amount) => (
+                      <button
+                        key={amount}
+                        onClick={() => setDepositAmount(amount.toString())}
+                        className="flex-1 py-2 text-sm rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                      >
+                        ${amount}
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button
+                    onClick={handleDeposit}
+                    disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
+                    className="w-full"
+                  >
+                    {isDepositing ? 'Depositing...' : 'Deposit & Shield'}
+                  </Button>
+
+                  <p className="text-xs text-muted-foreground text-center">
+                    Your funds are shielded into a private pool, making your DCA trades untraceable.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Depositing state */}
+            {setupStep === 'depositing' && (
+              <div className="p-6 text-center">
+                <div className="relative w-12 h-12 mx-auto mb-4">
+                  <div className="absolute inset-0 rounded-full border-2 border-muted" />
+                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+                </div>
+                <h2 className="font-medium mb-2">Shielding Your Funds</h2>
+                <p className="text-sm text-muted-foreground">
+                  This may take a moment while the privacy proof is generated...
+                </p>
+              </div>
+            )}
+
+            {/* Success */}
+            {depositSuccess && (
+              <div className="p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                  <Check className="h-6 w-6 text-green-500" />
+                </div>
+                <h2 className="font-medium mb-2">Deposit Successful!</h2>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Your funds are now private. Create a DCA strategy to start accumulating.
+                </p>
+                {depositTx && (
+                  <a
+                    href={`https://solscan.io/tx/${depositTx}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-accent hover:underline mb-6"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    View transaction
+                  </a>
+                )}
+                <Button onClick={() => setCreateModalOpen(true)} className="w-full gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create DCA Strategy
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* How it works */}
+          <div className="mt-10 text-center">
+            <p className="text-sm text-muted-foreground mb-4">How it works</p>
+            <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+              <div className="text-center">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">1</div>
+                <span>Deposit</span>
+              </div>
+              <ChevronRight className="h-4 w-4" />
+              <div className="text-center">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">2</div>
+                <span>Create DCA</span>
+              </div>
+              <ChevronRight className="h-4 w-4" />
+              <div className="text-center">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">3</div>
+                <span>Auto-accumulate</span>
+              </div>
+            </div>
+          </div>
         </div>
         <CreateDCAModal />
       </div>
@@ -345,7 +557,12 @@ export function Dashboard() {
         {/* Balance Section */}
         <section className="mb-14">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-muted-foreground">Shielded Balance</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-muted-foreground">Private Balance</p>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent/10">
+                <Shield className="h-3 w-3 text-accent" />
+              </div>
+            </div>
             <button
               onClick={() => fetchBalances(true)}
               disabled={balancesLoading}
@@ -384,7 +601,7 @@ export function Dashboard() {
               className="gap-2"
             >
               <ArrowDownToLine className="h-4 w-4" />
-              Shield
+              Add Funds
             </Button>
             <Button
               variant={showWithdraw ? 'default' : 'outline'}
@@ -397,14 +614,14 @@ export function Dashboard() {
               className="gap-2"
             >
               <ArrowUpFromLine className="h-4 w-4" />
-              Unshield
+              Withdraw
             </Button>
           </div>
 
           {/* Deposit Panel */}
           {showDeposit && (
             <div className="mt-4 p-5 rounded-lg bg-card border border-border">
-              <p className="text-sm text-muted-foreground mb-3">Deposit USDC into the privacy pool</p>
+              <p className="text-sm text-muted-foreground mb-3">Add USDC to your private balance</p>
               <div className="flex gap-3">
                 <input
                   type="number"
@@ -415,7 +632,7 @@ export function Dashboard() {
                   autoFocus
                 />
                 <Button onClick={handleDeposit} disabled={isDepositing || !depositAmount}>
-                  {isDepositing ? 'Shielding...' : 'Confirm'}
+                  {isDepositing ? 'Adding...' : 'Confirm'}
                 </Button>
               </div>
             </div>
@@ -543,347 +760,48 @@ export function Dashboard() {
           </section>
         )}
 
-        {/* Session Wallet (collapsed by default, shown as small footer) */}
-        {sessionKey && (
-          <section className="pt-6 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Wallet className="h-4 w-4" />
-                <span>Session Wallet</span>
-                <span className="text-mono text-xs">{sessionBalance?.toFixed(4) || '0'} SOL</span>
+        {/* Advanced Section (collapsed by default) */}
+        <section className="pt-6 border-t border-border">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Advanced</span>
+            <ChevronRight className={`h-4 w-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+          </button>
+
+          {showAdvanced && (
+            <div className="mt-4 p-4 rounded-lg bg-card border border-border space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Gas Wallet</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-mono text-xs">{sessionKey?.slice(0, 8)}...{sessionKey?.slice(-6)}</span>
+                  <button
+                    onClick={copySessionKey}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={copySessionKey}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-              >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copied ? 'Copied' : 'Copy address'}
-              </button>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Gas Balance</span>
+                <span className="text-mono">{sessionBalance?.toFixed(4)} SOL</span>
+              </div>
+              {(sessionUsdcBalance || 0) > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Pending USDC</span>
+                  <span className="text-mono">{sessionUsdcBalance?.toFixed(2)} USDC</span>
+                </div>
+              )}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
       </div>
 
       <CreateDCAModal />
-    </div>
-  );
-}
-
-// Onboarding Flow Component
-function OnboardingFlow({
-  step,
-  sessionKey,
-  sessionBalance,
-  sessionUsdcBalance,
-  onCopySessionKey,
-  copied,
-  onShieldClick,
-  showDeposit,
-  depositAmount,
-  setDepositAmount,
-  onDeposit,
-  isDepositing,
-  depositSuccess,
-  depositTx,
-  onCreateStrategy,
-  onRefreshBalance,
-  onRefreshShieldedBalance,
-}: {
-  step: OnboardingStep;
-  sessionKey: string | null;
-  sessionBalance: number | null;
-  sessionUsdcBalance: number | null;
-  onCopySessionKey: () => void;
-  copied: boolean;
-  onShieldClick: () => void;
-  showDeposit: boolean;
-  depositAmount: string;
-  setDepositAmount: (v: string) => void;
-  onDeposit: () => void;
-  isDepositing: boolean;
-  depositSuccess: boolean;
-  depositTx: string | null;
-  onCreateStrategy: () => void;
-  onRefreshBalance: () => void;
-  onRefreshShieldedBalance: () => void;
-}) {
-  const steps = [
-    { id: 'fund_session', label: 'Fund Session', description: 'Add SOL for gas fees' },
-    { id: 'transfer_usdc', label: 'Transfer USDC', description: 'Send USDC to session wallet' },
-    { id: 'shield_tokens', label: 'Shield Tokens', description: 'Deposit into privacy pool' },
-    { id: 'create_strategy', label: 'Create Strategy', description: 'Set up your first DCA' },
-  ];
-
-  const currentStepIndex = steps.findIndex(s => s.id === step);
-
-  return (
-    <div>
-      {/* Header */}
-      <div className="text-center mb-10">
-        <h1 className="text-2xl font-medium mb-2">Get Started</h1>
-        <p className="text-muted-foreground">Complete these steps to start accumulating privately</p>
-      </div>
-
-      {/* Progress Steps */}
-      <div className="flex items-center justify-center gap-2 mb-10">
-        {steps.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-              i < currentStepIndex
-                ? 'bg-green-500/20 text-green-500'
-                : i === currentStepIndex
-                  ? 'bg-accent text-accent-foreground'
-                  : 'bg-muted text-muted-foreground'
-            }`}>
-              {i < currentStepIndex ? <Check className="h-4 w-4" /> : i + 1}
-            </div>
-            {i < steps.length - 1 && (
-              <div className={`w-12 h-0.5 ${i < currentStepIndex ? 'bg-green-500/50' : 'bg-muted'}`} />
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Current Step Content */}
-      <div className="rounded-xl bg-card border border-border p-6">
-        {step === 'fund_session' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <Wallet className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-medium">Fund Session Wallet</h2>
-                <p className="text-sm text-muted-foreground">Send ~0.1 SOL for transaction fees</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-muted/50 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Session Wallet Address</span>
-                <button
-                  onClick={onCopySessionKey}
-                  className="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
-                >
-                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-              <code className="text-xs text-mono break-all">{sessionKey || 'Loading...'}</code>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg border border-border mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className="text-xl font-medium text-mono">{sessionBalance?.toFixed(4) || '0'} SOL</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onRefreshBalance}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/20 text-sm">
-              <AlertCircle className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-              <p className="text-muted-foreground">
-                Send SOL from your wallet to this address. This covers transaction fees for automatic DCA execution.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {step === 'transfer_usdc' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <ArrowDownToLine className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-medium">Transfer USDC</h2>
-                <p className="text-sm text-muted-foreground">Send USDC to your session wallet</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-muted-foreground mb-4">
-              Transfer USDC from your main wallet to your session wallet.
-              This USDC will then be shielded into the privacy pool.
-            </p>
-
-            <div className="p-4 rounded-lg bg-muted/50 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">Session Wallet Address</span>
-                <button
-                  onClick={onCopySessionKey}
-                  className="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
-                >
-                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-              <code className="text-xs text-mono break-all">{sessionKey || 'Loading...'}</code>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg border border-border mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground">USDC Balance</p>
-                <p className="text-xl font-medium text-mono">{sessionUsdcBalance?.toFixed(2) || '0.00'} USDC</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onRefreshBalance}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-accent/5 border border-accent/20 text-sm">
-              <AlertCircle className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-              <p className="text-muted-foreground">
-                Send at least 1 USDC to the session wallet address above. You can do this from your connected wallet or any exchange.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {step === 'shield_tokens' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <ArrowDownToLine className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-medium">Shield Your Tokens</h2>
-                <p className="text-sm text-muted-foreground">Deposit USDC into the privacy pool</p>
-              </div>
-            </div>
-
-            {depositSuccess ? (
-              // Success state
-              <div>
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-green-500/10 border border-green-500/30 mb-4">
-                  <Check className="h-5 w-5 text-green-500" />
-                  <div>
-                    <p className="font-medium text-green-500">Deposit Successful!</p>
-                    <p className="text-sm text-muted-foreground">Your USDC has been shielded into the privacy pool.</p>
-                  </div>
-                </div>
-
-                {depositTx && (
-                  <a
-                    href={`https://solscan.io/tx/${depositTx}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-accent hover:underline mb-4"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    View transaction on Solscan
-                  </a>
-                )}
-
-                <p className="text-sm text-muted-foreground mb-4">
-                  The indexer is syncing your balance. This may take a few moments.
-                  Click below to refresh and continue.
-                </p>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={onRefreshShieldedBalance} className="flex-1 gap-2">
-                    <RefreshCw className="h-4 w-4" />
-                    Refresh Balance
-                  </Button>
-                  <Button onClick={onCreateStrategy} className="flex-1 gap-2">
-                    <ArrowRight className="h-4 w-4" />
-                    Continue Anyway
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              // Normal deposit flow
-              <>
-                <div className="flex items-center justify-between p-4 rounded-lg border border-border mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Session Wallet USDC</p>
-                    <p className="text-xl font-medium text-mono">{sessionUsdcBalance?.toFixed(2) || '0.00'} USDC</p>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted-foreground mb-4">
-                  Shielding moves your tokens into a privacy pool where they become unlinkable to your wallet.
-                  Your DCA strategies will execute from these shielded funds.
-                </p>
-
-                {!showDeposit ? (
-                  <Button onClick={onShieldClick} className="w-full gap-2">
-                    <ArrowDownToLine className="h-4 w-4" />
-                    Shield USDC
-                  </Button>
-                ) : (
-                  <div className="space-y-3">
-                    <input
-                      type="number"
-                      placeholder="Amount (USDC)"
-                      value={depositAmount}
-                      onChange={(e) => setDepositAmount(e.target.value)}
-                      className="w-full px-4 py-3 bg-background border border-border rounded-lg text-mono"
-                      autoFocus
-                    />
-                    <Button onClick={onDeposit} disabled={isDepositing || !depositAmount} className="w-full">
-                      {isDepositing ? 'Shielding...' : 'Confirm Shield'}
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {step === 'create_strategy' && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <Zap className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-medium">Create Your First Strategy</h2>
-                <p className="text-sm text-muted-foreground">Set up automatic private accumulation</p>
-              </div>
-            </div>
-
-            <p className="text-sm text-muted-foreground mb-4">
-              Choose what to accumulate, how much per trade, and how often.
-              Trades execute automatically from your shielded balance.
-            </p>
-
-            <Button onClick={onCreateStrategy} className="w-full gap-2">
-              <Plus className="h-4 w-4" />
-              Create Strategy
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* How it works - brief explanation */}
-      <div className="mt-8 pt-8 border-t border-border">
-        <p className="text-sm text-muted-foreground text-center mb-4">How Cloak Works</p>
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-          <div className="text-center">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
-              <ArrowDownToLine className="h-4 w-4" />
-            </div>
-            <span>Shield</span>
-          </div>
-          <ArrowRight className="h-4 w-4" />
-          <div className="text-center">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
-              <Zap className="h-4 w-4" />
-            </div>
-            <span>Auto-Swap</span>
-          </div>
-          <ArrowRight className="h-4 w-4" />
-          <div className="text-center">
-            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-1">
-              <Check className="h-4 w-4" />
-            </div>
-            <span>Re-Shield</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
