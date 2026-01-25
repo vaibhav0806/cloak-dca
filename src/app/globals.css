@@ -1,5 +1,4 @@
-/* CLOAK - Stealth Terminal Aesthetic */
-/* Deep void. Purple electricity. Zero trace. */
+/* Cloak - Clean, minimal design */
 
 html {
   background-color: #030303;
@@ -32,9 +31,9 @@ html {
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: 0px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
 }
 
 :root {
@@ -48,15 +47,14 @@ html {
   --primary-foreground: #030303;
   --secondary: #111111;
   --secondary-foreground: #fafafa;
-  --muted: #141414;
-  --muted-foreground: #666666;
+  --muted: #171717;
+  --muted-foreground: #737373;
   --accent: #a855f7;
-  --accent-secondary: #22d3ee;
   --accent-foreground: #030303;
   --destructive: #dc2626;
-  --success: #10b981;
-  --border: #1f1f1f;
-  --input: #1f1f1f;
+  --success: #22c55e;
+  --border: #262626;
+  --input: #262626;
   --ring: #a855f7;
 }
 
@@ -77,25 +75,10 @@ html {
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-space-mono), monospace;
-    font-size: 14px;
-    line-height: 1.7;
-    letter-spacing: 0.01em;
-    overflow-x: hidden;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-    z-index: 9999;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.015;
-    mix-blend-mode: overlay;
+    font-family: var(--font-syne), system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
   }
 
   ::selection {
@@ -105,54 +88,50 @@ html {
 }
 
 /* ============================================
-   TYPOGRAPHY - Terminal meets editorial
+   TYPOGRAPHY
    ============================================ */
 
 .text-display {
-  font-family: var(--font-syne), system-ui, sans-serif;
-  font-size: clamp(3.5rem, 12vw, 8rem);
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.04em;
-  text-transform: uppercase;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 300;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
 .text-headline {
-  font-family: var(--font-syne), system-ui, sans-serif;
-  font-size: clamp(1.5rem, 4vw, 2.5rem);
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: 1.5rem;
+  font-weight: 400;
+  line-height: 1.2;
   letter-spacing: -0.02em;
 }
 
 .text-title {
-  font-family: var(--font-syne), system-ui, sans-serif;
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.4;
   letter-spacing: -0.01em;
 }
 
 .text-body {
-  font-size: 14px;
+  font-size: 0.9375rem;
   font-weight: 400;
-  line-height: 1.7;
+  line-height: 1.6;
   color: var(--muted-foreground);
 }
 
 .text-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: 0.6875rem;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
 .text-mono {
   font-family: var(--font-space-mono), monospace;
-  font-size: 13px;
-  letter-spacing: 0.02em;
+  font-size: 0.875rem;
+  letter-spacing: -0.02em;
   font-feature-settings: "tnum" 1;
 }
 
@@ -161,106 +140,8 @@ html {
   font-size: 2rem;
   font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-feature-settings: "tnum" 1;
-}
-
-/* ============================================
-   GRADIENT BACKGROUND
-   ============================================ */
-
-.gradient-void {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% 120%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 80% 0%, rgba(34, 211, 238, 0.04) 0%, transparent 50%),
-    var(--background);
-}
-
-/* ============================================
-   SCANLINES EFFECT
-   ============================================ */
-
-.scanlines {
-  position: relative;
-}
-
-.scanlines::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-}
-
-/* ============================================
-   GLITCH TEXT EFFECT
-   ============================================ */
-
-.glitch {
-  position: relative;
-}
-
-.glitch::before,
-.glitch::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-}
-
-.glitch:hover::before {
-  animation: glitch-1 0.3s ease-out;
-  color: var(--accent);
-  z-index: -1;
-}
-
-.glitch:hover::after {
-  animation: glitch-2 0.3s ease-out;
-  color: var(--accent-secondary);
-  z-index: -1;
-}
-
-@keyframes glitch-1 {
-  0%, 100% { opacity: 0; transform: translate(0); }
-  20% { opacity: 0.8; transform: translate(-3px, 2px); }
-  40% { opacity: 0.8; transform: translate(3px, -2px); }
-  60% { opacity: 0.8; transform: translate(-2px, 1px); }
-  80% { opacity: 0.8; transform: translate(2px, -1px); }
-}
-
-@keyframes glitch-2 {
-  0%, 100% { opacity: 0; transform: translate(0); }
-  20% { opacity: 0.6; transform: translate(3px, -2px); }
-  40% { opacity: 0.6; transform: translate(-3px, 2px); }
-  60% { opacity: 0.6; transform: translate(2px, -1px); }
-  80% { opacity: 0.6; transform: translate(-2px, 1px); }
-}
-
-/* ============================================
-   TERMINAL CURSOR
-   ============================================ */
-
-.terminal-cursor::after {
-  content: '_';
-  animation: blink 1s step-end infinite;
-  color: var(--accent);
-}
-
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
 }
 
 /* ============================================
@@ -268,18 +149,18 @@ html {
    ============================================ */
 
 .card {
-  background: linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(10, 10, 10, 0.9) 100%);
+  background: var(--card);
   border: 1px solid var(--border);
-  backdrop-filter: blur(10px);
+  border-radius: 12px;
 }
 
 .card:hover {
-  border-color: rgba(168, 85, 247, 0.3);
+  border-color: #333333;
 }
 
 .divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  background: var(--border);
 }
 
 /* Status indicators */
@@ -291,12 +172,12 @@ html {
 
 .status-dot.active {
   background: var(--success);
-  box-shadow: 0 0 12px var(--success);
+  box-shadow: 0 0 8px var(--success);
 }
 
 .status-dot.paused {
   background: var(--accent);
-  box-shadow: 0 0 12px var(--accent);
+  box-shadow: 0 0 8px var(--accent);
 }
 
 .status-dot.inactive {
@@ -307,12 +188,14 @@ html {
 .progress-track {
   height: 2px;
   background: var(--muted);
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-secondary));
+  background: var(--accent);
+  border-radius: 1px;
   transition: width 0.5s ease;
 }
 
@@ -321,28 +204,28 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
+  padding: 4px 10px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  border: 1px solid var(--border);
-  background: transparent;
+  border-radius: 4px;
+  background: var(--muted);
   color: var(--foreground);
 }
 
 .badge.success {
-  border-color: var(--success);
+  background: rgba(34, 197, 94, 0.15);
   color: var(--success);
 }
 
 .badge.warning {
-  border-color: var(--accent);
+  background: rgba(168, 85, 247, 0.15);
   color: var(--accent);
 }
 
 .badge.error {
-  border-color: var(--destructive);
+  background: rgba(220, 38, 38, 0.15);
   color: var(--destructive);
 }
 
@@ -351,14 +234,12 @@ html {
    ============================================ */
 
 input, select, textarea {
-  font-family: var(--font-space-mono), monospace;
-  font-size: 14px;
-  background: transparent;
-  border: 1px solid var(--border);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: inherit;
+  font-size: 0.9375rem;
 }
 
 input[type="number"] {
+  font-family: var(--font-space-mono), monospace;
   font-feature-settings: "tnum" 1;
   -moz-appearance: textfield;
 }
@@ -371,13 +252,12 @@ input[type="number"]::-webkit-inner-spin-button {
 
 input::placeholder {
   color: var(--muted-foreground);
-  opacity: 0.5;
+  opacity: 0.6;
 }
 
 input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
 }
 
 /* ============================================
@@ -388,33 +268,13 @@ input:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px 24px;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 12px;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.875rem;
   font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
-  transition: all 0.2s ease;
+  border-radius: 8px;
+  transition: all 0.15s ease;
   cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-.btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-  transition: left 0.5s ease;
-}
-
-.btn:hover::before {
-  left: 100%;
 }
 
 .btn-primary {
@@ -423,7 +283,7 @@ input:focus {
 }
 
 .btn-primary:hover {
-  box-shadow: 0 0 30px rgba(250, 250, 250, 0.2);
+  opacity: 0.9;
 }
 
 .btn-accent {
@@ -432,18 +292,17 @@ input:focus {
 }
 
 .btn-accent:hover {
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+  filter: brightness(1.1);
 }
 
 .btn-ghost {
   background: transparent;
   color: var(--muted-foreground);
-  border: 1px solid var(--border);
 }
 
 .btn-ghost:hover {
   color: var(--foreground);
-  border-color: var(--foreground);
+  background: var(--muted);
 }
 
 /* ============================================
@@ -451,8 +310,8 @@ input:focus {
    ============================================ */
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -461,10 +320,11 @@ input:focus {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
+  background: #404040;
 }
 
 /* ============================================
@@ -479,295 +339,36 @@ input:focus {
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(40px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 0.4;
-    box-shadow: 0 0 20px var(--accent);
-  }
-  50% {
-    opacity: 1;
-    box-shadow: 0 0 40px var(--accent), 0 0 60px var(--accent);
-  }
-}
-
-@keyframes data-stream {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 0% 100%; }
-}
-
-@keyframes reveal {
-  0% {
-    clip-path: inset(0 100% 0 0);
-  }
-  100% {
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* Particle dissolution effect */
-@keyframes dissolve {
-  0% {
-    opacity: 1;
-    filter: blur(0);
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.5;
-    filter: blur(2px);
-  }
-  100% {
-    opacity: 0;
-    filter: blur(8px);
-    transform: scale(1.5);
-  }
-}
-
-/* ============================================
-   ANIMATION UTILITIES
-   ============================================ */
 
 .animate-in {
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-in-delayed-1 {
-  opacity: 0;
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
-}
-
-.animate-in-delayed-2 {
-  opacity: 0;
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
-}
-
-.animate-in-delayed-3 {
-  opacity: 0;
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
-}
-
-.animate-in-delayed-4 {
-  opacity: 0;
-  animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
-}
-
-.animate-reveal {
-  animation: reveal 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+  animation: slideUp 0.4s ease-out forwards;
 }
 
 /* ============================================
-   ACCENT UTILITIES
+   UTILITIES
    ============================================ */
 
 .accent {
   color: var(--accent);
 }
 
-.accent-secondary {
-  color: var(--accent-secondary);
-}
-
-.gradient-text {
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-secondary) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 .glow {
-  box-shadow: 0 0 40px rgba(168, 85, 247, 0.3);
-}
-
-.glow-cyan {
-  box-shadow: 0 0 40px rgba(34, 211, 238, 0.3);
-}
-
-/* Border glow */
-.border-glow:hover {
-  border-color: var(--accent);
   box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
 }
 
-/* ============================================
-   SECTION SPACING
-   ============================================ */
-
 .section {
-  padding: 8rem 0;
+  padding: 4rem 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .section {
-    padding: 5rem 0;
-  }
-}
-
-/* ============================================
-   ASCII DECORATIONS
-   ============================================ */
-
-.ascii-border {
-  position: relative;
-}
-
-.ascii-border::before {
-  content: '┌──────────────────────────────────────┐';
-  position: absolute;
-  top: -24px;
-  left: 0;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 12px;
-  color: var(--border);
-  white-space: nowrap;
-}
-
-.ascii-border::after {
-  content: '└──────────────────────────────────────┘';
-  position: absolute;
-  bottom: -24px;
-  left: 0;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 12px;
-  color: var(--border);
-  white-space: nowrap;
-}
-
-/* ============================================
-   MATRIX RAIN BACKGROUND
-   ============================================ */
-
-.matrix-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0.03;
-}
-
-.matrix-column {
-  position: absolute;
-  top: -100%;
-  font-family: var(--font-space-mono), monospace;
-  font-size: 14px;
-  line-height: 1.2;
-  color: var(--accent);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  animation: matrix-fall linear infinite;
-}
-
-@keyframes matrix-fall {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(200vh); }
-}
-
-/* ============================================
-   HOVER EFFECTS
-   ============================================ */
-
-.hover-lift {
-  transition: transform 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-4px);
-}
-
-.hover-glow {
-  transition: box-shadow 0.3s ease;
-}
-
-.hover-glow:hover {
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);
-}
-
-/* ============================================
-   LINE DECORATIONS
-   ============================================ */
-
-.line-accent {
-  width: 60px;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent), transparent);
-}
-
-.line-vertical {
-  width: 1px;
-  height: 100px;
-  background: linear-gradient(180deg, var(--accent), transparent);
-}
-
-/* ============================================
-   RESPONSIVE UTILITIES
-   ============================================ */
-
-@media (max-width: 768px) {
-  .text-display {
-    font-size: clamp(2.5rem, 10vw, 4rem);
-  }
-
-  .hide-mobile {
-    display: none;
-  }
-}
-
-/* ============================================
-   CUSTOM CURSOR (optional enhancement)
-   ============================================ */
-
-@media (hover: hover) {
-  .custom-cursor {
-    cursor: none;
-  }
-
-  .cursor-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--accent);
-    border-radius: 50%;
-    position: fixed;
-    pointer-events: none;
-    z-index: 99999;
-    mix-blend-mode: difference;
-    transition: transform 0.1s ease;
+    padding: 3rem 0;
   }
 }
