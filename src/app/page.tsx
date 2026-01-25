@@ -48,6 +48,7 @@ export default function Home() {
 }
 
 function Header() {
+  const { connected } = useWallet();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -67,14 +68,16 @@ function Header() {
           </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1">
-          <a href="#how-it-works" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
-            How it works
-          </a>
-          <a href="#security" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
-            Security
-          </a>
-        </nav>
+        {!connected && (
+          <nav className="hidden md:flex items-center gap-1">
+            <a href="#how-it-works" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
+              How it works
+            </a>
+            <a href="#security" className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-white/5">
+              Security
+            </a>
+          </nav>
+        )}
 
         <WalletButton />
       </div>
