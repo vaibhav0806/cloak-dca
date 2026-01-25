@@ -165,52 +165,88 @@ function Landing() {
         </div>
       </section>
 
-      {/* Visual explainer */}
-      <section className="relative py-16 sm:py-24 border-t border-border">
+      {/* Problem vs Solution - Side by Side */}
+      <section className="relative py-16 sm:py-24 lg:py-32 border-t border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <div>
-              <p className="text-accent text-sm font-medium mb-4">The Problem</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium leading-tight mb-6">
-                Your DCA strategy is public by default
-              </h2>
-              <p className="text-muted-foreground leading-relaxed mb-8">
-                Every trade you make on-chain is visible. Watchers can see your accumulation patterns,
-                front-run your orders, and track your entire portfolio. This puts you at a disadvantage.
-              </p>
-              <div className="space-y-4">
-                <ProblemItem text="Visible wallet balances expose your holdings" />
-                <ProblemItem text="Predictable DCA timing enables front-running" />
-                <ProblemItem text="Transaction history reveals your strategy" />
+          {/* Section header */}
+          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+            <p className="text-accent text-sm font-medium mb-4">Why privacy matters</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
+              See the difference <span className="text-accent">cloak</span> makes
+            </h2>
+          </div>
+
+          {/* Side by side comparison */}
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+            {/* Problem - Left side */}
+            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/[0.03] to-transparent">
+              {/* Corner accent */}
+              <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-red-500/30 rounded-tl-2xl" />
+
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                    <Eye className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-red-400 uppercase tracking-wider">Without privacy</p>
+                    <p className="text-lg font-medium">Public by default</p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                  Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
+                </p>
+
+                <div className="space-y-3">
+                  <ProblemItem text="Wallet balances exposed" />
+                  <ProblemItem text="DCA timing visible to bots" />
+                  <ProblemItem text="Full history trackable" />
+                </div>
+
+                {/* Visual indicator */}
+                <div className="mt-8 pt-6 border-t border-red-500/10">
+                  <div className="flex items-center gap-3 text-sm text-red-400">
+                    <Eye className="w-4 h-4" />
+                    <span>Anyone can watch your moves</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="relative">
-              <VisualDiagram type="problem" />
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Solution */}
-      <section className="relative py-16 sm:py-24 bg-card/30 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <div className="order-2 lg:order-1">
-              <VisualDiagram type="solution" />
-            </div>
-            <div className="order-1 lg:order-2">
-              <p className="text-accent text-sm font-medium mb-4">The Solution</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium leading-tight mb-6">
-                Cloak makes your trades invisible
-              </h2>
-              <p className="text-muted-foreground leading-relaxed mb-8">
-                Using zero-knowledge proofs, Cloak breaks the link between your wallet and your trades.
-                Deposit once, then accumulate privately—no one can trace your activity.
-              </p>
-              <div className="space-y-4">
-                <SolutionItem text="Shielded balance hides your holdings" />
-                <SolutionItem text="Private execution prevents front-running" />
-                <SolutionItem text="Unlinkable transactions protect your strategy" />
+            {/* Solution - Right side */}
+            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/[0.05] to-transparent">
+              {/* Corner accent */}
+              <div className="absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 border-accent/30 rounded-tr-2xl" />
+
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <EyeOff className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-accent uppercase tracking-wider">With <span className="text-accent">cloak</span></p>
+                    <p className="text-lg font-medium">Invisible by design</p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                  Zero-knowledge proofs break the link between your wallet and trades. No one can trace your activity.
+                </p>
+
+                <div className="space-y-3">
+                  <SolutionItem text="Shielded balances" />
+                  <SolutionItem text="Private execution" />
+                  <SolutionItem text="Unlinkable transactions" />
+                </div>
+
+                {/* Visual indicator */}
+                <div className="mt-8 pt-6 border-t border-accent/10">
+                  <div className="flex items-center gap-3 text-sm text-accent">
+                    <EyeOff className="w-4 h-4" />
+                    <span>Your identity stays private</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -260,7 +296,7 @@ function Landing() {
                 Built for the security-conscious
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 sm:mb-10">
-                Cloak is designed from the ground up with security as the top priority.
+                <span className="text-accent">cloak</span> is designed from the ground up with security as the top priority.
                 Your funds remain in your control at all times.
               </p>
 
@@ -352,118 +388,6 @@ function SecurityFeature({ title, description }: { title: string; description: s
       <div>
         <h4 className="font-medium mb-1">{title}</h4>
         <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  );
-}
-
-
-
-function VisualDiagram({ type }: { type: 'problem' | 'solution' }) {
-  if (type === 'problem') {
-    return (
-      <div className="relative p-6 sm:p-8 rounded-2xl border border-border bg-card/50">
-        <div className="space-y-4">
-          {/* Wallet */}
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-              <Eye className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium">Your Wallet</div>
-              <div className="text-xs text-muted-foreground">0x7a3f...8e2d</div>
-            </div>
-            <div className="text-xs text-red-400 bg-red-400/10 px-2 py-1 rounded">Visible</div>
-          </div>
-
-          {/* Arrow */}
-          <div className="flex items-center gap-2 pl-5">
-            <div className="w-0.5 h-8 bg-border" />
-            <span className="text-xs text-muted-foreground">Direct transactions</span>
-          </div>
-
-          {/* DEX */}
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-              <Zap className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium">DEX</div>
-              <div className="text-xs text-muted-foreground">Public order book</div>
-            </div>
-            <div className="text-xs text-red-400 bg-red-400/10 px-2 py-1 rounded">Tracked</div>
-          </div>
-
-          {/* Watchers */}
-          <div className="mt-6 p-4 rounded-xl bg-red-500/5 border border-red-500/10">
-            <div className="flex items-center gap-2 text-sm text-red-400">
-              <Eye className="h-4 w-4" />
-              <span>Watchers can see everything</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative p-6 sm:p-8 rounded-2xl border border-accent/20 bg-card/50">
-      <div className="space-y-4">
-        {/* Wallet */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-            <Lock className="h-5 w-5 text-accent" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">Your Wallet</div>
-            <div className="text-xs text-muted-foreground">Deposits only</div>
-          </div>
-          <div className="text-xs text-accent bg-accent/10 px-2 py-1 rounded">Private</div>
-        </div>
-
-        {/* Arrow */}
-        <div className="flex items-center gap-2 pl-5">
-          <div className="w-0.5 h-8 bg-accent/30" />
-          <span className="text-xs text-muted-foreground">Zero-knowledge proof</span>
-        </div>
-
-        {/* Shield */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-            <Shield className="h-5 w-5 text-accent" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">Cloak Pool</div>
-            <div className="text-xs text-muted-foreground">Encrypted balance</div>
-          </div>
-          <div className="text-xs text-accent bg-accent/10 px-2 py-1 rounded">Shielded</div>
-        </div>
-
-        {/* Arrow */}
-        <div className="flex items-center gap-2 pl-5">
-          <div className="w-0.5 h-8 bg-accent/30" />
-          <span className="text-xs text-muted-foreground">Anonymous execution</span>
-        </div>
-
-        {/* DEX */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-            <Zap className="h-5 w-5 text-accent" />
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium">DEX (via Jupiter)</div>
-            <div className="text-xs text-muted-foreground">Best price routing</div>
-          </div>
-          <div className="text-xs text-accent bg-accent/10 px-2 py-1 rounded">Unlinkable</div>
-        </div>
-
-        {/* Privacy indicator */}
-        <div className="mt-6 p-4 rounded-xl bg-accent/5 border border-accent/10">
-          <div className="flex items-center gap-2 text-sm text-accent">
-            <EyeOff className="h-4 w-4" />
-            <span>Your identity stays private</span>
-          </div>
-        </div>
       </div>
     </div>
   );
