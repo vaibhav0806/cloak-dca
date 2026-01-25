@@ -226,12 +226,24 @@ export function Dashboard() {
       const amount = Number(depositAmount);
       const amountInBaseUnits = Math.floor(amount * 1e6); // USDC has 6 decimals
 
-      // Step 1: Transfer USDC from main wallet to session wallet
-      console.log(`Transferring ${amount} USDC from main wallet to session wallet...`);
-
-      // Get or create ATAs
+      // Get ATAs
       const sourceAta = await getAssociatedTokenAddress(usdcMint, publicKey);
       const destAta = await getAssociatedTokenAddress(usdcMint, sessionPublicKey);
+
+      // Check existing balance in session wallet
+      let existingBalance = 0;
+      try {
+        const accountInfo = await connection.getAccountInfo(destAta);
+        if (accountInfo) {
+          existingBalance = Number(accountInfo.data.readBigUInt64LE(64)) / 1e6;
+          console.log(`Session wallet already has ${existingBalance} USDC`);
+        }
+      } catch {
+        // No existing balance
+      }
+
+      // Step 1: Transfer USDC from main wallet to session wallet
+      console.log(`Transferring ${amount} USDC from main wallet to session wallet...`);
 
       const transaction = new Transaction();
 
@@ -240,6 +252,7 @@ export function Dashboard() {
         await getAccount(connection, destAta);
       } catch (error) {
         if (error instanceof TokenAccountNotFoundError) {
+          console.log('Creating USDC token account for session wallet...');
           transaction.add(
             createAssociatedTokenAccountInstruction(
               publicKey, // payer
@@ -272,17 +285,52 @@ export function Dashboard() {
       const transferSig = await sendTransaction(transaction, connection);
       console.log(`USDC transfer signature: ${transferSig}`);
 
-      // Wait for confirmation
-      await connection.confirmTransaction({
+      // Wait for confirmation with longer timeout
+      console.log('Waiting for transfer confirmation...');
+      const confirmation = await connection.confirmTransaction({
         signature: transferSig,
         blockhash,
         lastValidBlockHeight,
       }, 'confirmed');
+
+      if (confirmation.value.err) {
+        throw new Error(`Transfer failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
       console.log('USDC transfer confirmed');
 
-      // Step 2: Now deposit the USDC into the privacy pool
-      console.log(`Depositing ${amount} USDC into privacy pool...`);
-      const result = await deposit(USDC_MINT, amount);
+      // Step 2: Wait a bit and verify USDC arrived in session wallet
+      console.log('Verifying USDC balance in session wallet...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      let sessionUsdcAmount = 0;
+      let retries = 5;
+      while (retries > 0) {
+        try {
+          const accountInfo = await connection.getAccountInfo(destAta);
+          if (accountInfo) {
+            sessionUsdcAmount = Number(accountInfo.data.readBigUInt64LE(64)) / 1e6;
+            console.log(`Session wallet USDC balance: ${sessionUsdcAmount}`);
+            if (sessionUsdcAmount >= amount * 0.99) { // Allow 1% tolerance
+              break;
+            }
+          }
+        } catch (e) {
+          console.log('Waiting for token account...', e);
+        }
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+
+      if (sessionUsdcAmount < amount * 0.99) {
+        throw new Error(`Transfer may have failed. Expected ${amount} USDC but found ${sessionUsdcAmount.toFixed(2)} USDC in session wallet. Please check your session wallet balance.`);
+      }
+
+      // Step 3: Deposit ALL USDC from session wallet into the privacy pool
+      // Pass depositAll=true to ensure we deposit everything (including any leftover from previous attempts)
+      console.log(`Depositing all USDC (at least ${amount}) into privacy pool...`);
+      const result = await deposit(USDC_MINT, amount, true);
 
       if (!isMounted.current) return;
       setDepositAmount('');

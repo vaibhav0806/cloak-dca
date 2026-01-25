@@ -280,8 +280,9 @@ class ClientPrivacyClient {
 
   /**
    * Deposit tokens via API
+   * @param depositAll - If true, deposit entire session wallet balance (not just the specified amount)
    */
-  async deposit(tokenMint: string, amount: number): Promise<{ signature: string }> {
+  async deposit(tokenMint: string, amount: number, depositAll = false): Promise<{ signature: string }> {
     if (!this.config) {
       throw new Error('Client not initialized');
     }
@@ -299,6 +300,7 @@ class ClientPrivacyClient {
         sessionKeypairBase64,
         tokenMint,
         amount,
+        depositAll,
       }),
     });
 

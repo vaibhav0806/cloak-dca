@@ -102,10 +102,10 @@ export function useShieldedBalance() {
   }, [connected, publicKey, isInitialized]);
 
   const deposit = useCallback(
-    async (tokenMint: string, amount: number) => {
+    async (tokenMint: string, amount: number, depositAll = false) => {
       if (!connected || !isInitialized) throw new Error('Wallet not connected or client not initialized');
 
-      const result = await privacyClient.deposit(tokenMint, amount);
+      const result = await privacyClient.deposit(tokenMint, amount, depositAll);
       // Force refresh balances after deposit
       await fetchBalances(true);
       return result;

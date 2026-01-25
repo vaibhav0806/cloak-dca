@@ -7,7 +7,7 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { sessionKeypairBase64, tokenMint, amount } = body;
+    const { sessionKeypairBase64, tokenMint, amount, depositAll } = body;
 
     if (!sessionKeypairBase64) {
       return NextResponse.json(
@@ -41,28 +41,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If depositing USDC, check USDC balance
+    // If depositing USDC, check USDC balance with retries (RPC can have stale data)
+    let actualDepositAmount = amount;
+
     if (tokenMint === USDC_MINT) {
       const usdcMint = new PublicKey(USDC_MINT);
       const ata = await getAssociatedTokenAddress(usdcMint, keypair.publicKey);
-      const accountInfo = await connection.getAccountInfo(ata);
 
-      if (!accountInfo) {
+      let usdcAmount = 0;
+      let retries = 5;
+
+      while (retries > 0) {
+        // Use confirmed commitment to get latest data
+        const accountInfo = await connection.getAccountInfo(ata, { commitment: 'confirmed' });
+
+        if (!accountInfo) {
+          if (retries === 1) {
+            return NextResponse.json(
+              { error: 'No USDC token account found in session wallet. Please transfer USDC first.' },
+              { status: 400 }
+            );
+          }
+          console.log(`Token account not found, retrying... (${retries - 1} left)`);
+          retries--;
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+
+        const usdcBalance = accountInfo.data.readBigUInt64LE(64);
+        usdcAmount = Number(usdcBalance) / 1e6;
+        console.log(`Session wallet USDC balance: ${usdcAmount} USDC (attempt ${6 - retries})`);
+
+        if (usdcAmount >= amount * 0.99) { // Allow 1% tolerance for rounding
+          break;
+        }
+
+        // Balance not enough yet, wait and retry
+        retries--;
+        if (retries > 0) {
+          console.log(`Balance ${usdcAmount} < ${amount}, waiting for RPC sync... (${retries} retries left)`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+
+      if (usdcAmount < amount * 0.99) {
         return NextResponse.json(
-          { error: 'No USDC token account found in session wallet. Please transfer USDC first.' },
+          { error: `Insufficient USDC. Have ${usdcAmount.toFixed(2)} USDC, trying to deposit ${amount} USDC. RPC may be slow - please try again.` },
           { status: 400 }
         );
       }
 
-      const usdcBalance = accountInfo.data.readBigUInt64LE(64);
-      const usdcAmount = Number(usdcBalance) / 1e6;
-      console.log(`Session wallet USDC balance: ${usdcAmount} USDC`);
-
-      if (usdcAmount < amount) {
-        return NextResponse.json(
-          { error: `Insufficient USDC. Have ${usdcAmount.toFixed(2)} USDC, trying to deposit ${amount} USDC` },
-          { status: 400 }
-        );
+      // If depositAll flag is set, deposit the entire session wallet balance
+      if (depositAll && usdcAmount > amount) {
+        console.log(`depositAll=true: depositing entire balance of ${usdcAmount} USDC instead of requested ${amount} USDC`);
+        actualDepositAmount = usdcAmount;
       }
     }
 
@@ -75,8 +107,8 @@ export async function POST(request: NextRequest) {
       const lamports = Math.floor(amount * 1e9);
       result = await privacyClient.depositSOL(lamports);
     } else if (tokenMint === USDC_MINT) {
-      const baseUnits = Math.floor(amount * 1e6);
-      console.log(`Starting deposit of ${baseUnits} USDC base units (${amount} USDC)`);
+      const baseUnits = Math.floor(actualDepositAmount * 1e6);
+      console.log(`Starting deposit of ${baseUnits} USDC base units (${actualDepositAmount} USDC)`);
       result = await privacyClient.depositUSDC(baseUnits);
     } else {
       const baseUnits = Math.floor(amount * 1e6); // Assume 6 decimals for other SPL
