@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Shield, Lock, Zap, Eye, EyeOff, Check } from 'lucide-react';
+import { Shield, Lock, Zap, Eye, EyeOff, Check, ArrowRight } from 'lucide-react';
 
 export default function Home() {
   const { connected, connecting } = useWallet();
@@ -166,92 +166,7 @@ function Landing() {
       </section>
 
       {/* Problem vs Solution - Side by Side */}
-      <section className="relative py-16 sm:py-24 lg:py-32 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Section header */}
-          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-            <p className="text-accent text-sm font-medium mb-4">Why privacy matters</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
-              See the difference <span className="text-accent">cloak</span> makes
-            </h2>
-          </div>
-
-          {/* Side by side comparison */}
-          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
-            {/* Problem - Left side */}
-            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/[0.03] to-transparent">
-              {/* Corner accent */}
-              <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-red-500/30 rounded-tl-2xl" />
-
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                    <Eye className="w-5 h-5 text-red-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-red-400 uppercase tracking-wider">Without privacy</p>
-                    <p className="text-lg font-medium">Public by default</p>
-                  </div>
-                </div>
-
-                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                  Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
-                </p>
-
-                <div className="space-y-3">
-                  <ProblemItem text="Wallet balances exposed" />
-                  <ProblemItem text="DCA timing visible to bots" />
-                  <ProblemItem text="Full history trackable" />
-                </div>
-
-                {/* Visual indicator */}
-                <div className="mt-8 pt-6 border-t border-red-500/10">
-                  <div className="flex items-center gap-3 text-sm text-red-400">
-                    <Eye className="w-4 h-4" />
-                    <span>Anyone can watch your moves</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Solution - Right side */}
-            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/[0.05] to-transparent">
-              {/* Corner accent */}
-              <div className="absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 border-accent/30 rounded-tr-2xl" />
-
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <EyeOff className="w-5 h-5 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-accent uppercase tracking-wider">With <span className="text-accent">cloak</span></p>
-                    <p className="text-lg font-medium">Invisible by design</p>
-                  </div>
-                </div>
-
-                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                  Zero-knowledge proofs break the link between your wallet and trades. No one can trace your activity.
-                </p>
-
-                <div className="space-y-3">
-                  <SolutionItem text="Shielded balances" />
-                  <SolutionItem text="Private execution" />
-                  <SolutionItem text="Unlinkable transactions" />
-                </div>
-
-                {/* Visual indicator */}
-                <div className="mt-8 pt-6 border-t border-accent/10">
-                  <div className="flex items-center gap-3 text-sm text-accent">
-                    <EyeOff className="w-4 h-4" />
-                    <span>Your identity stays private</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ComparisonSection />
 
       {/* How it works */}
       <section id="how-it-works" className="relative py-16 sm:py-24 lg:py-32 border-t border-border">
@@ -390,5 +305,159 @@ function SecurityFeature({ title, description }: { title: string; description: s
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
+  );
+}
+
+function ComparisonSection() {
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="relative py-16 sm:py-24 lg:py-32 border-t border-border overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/20 to-transparent pointer-events-none" />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        {/* Section header */}
+        <div className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <p className="text-accent text-sm font-medium mb-4">Why privacy matters</p>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
+            See the difference <span className="text-accent">cloak</span> makes
+          </h2>
+        </div>
+
+        {/* Side by side comparison */}
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-4 relative">
+          {/* Center arrow - visible on lg screens */}
+          <div className={`hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-700 delay-500 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+            <div className="w-14 h-14 rounded-full bg-background border-2 border-accent/50 flex items-center justify-center shadow-[0_0_30px_rgba(255,99,71,0.3)]">
+              <ArrowRight className="w-6 h-6 text-accent" />
+            </div>
+          </div>
+
+          {/* Problem - Left side */}
+          <div className={`group relative transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'}`}>
+            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/[0.03] to-transparent overflow-hidden transition-all duration-300 hover:border-red-500/40 hover:shadow-[0_0_40px_rgba(239,68,68,0.1)]">
+              {/* Animated scan line */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent animate-scan" />
+              </div>
+
+              {/* Corner accent */}
+              <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-red-500/30 rounded-tl-2xl transition-all duration-300 group-hover:w-24 group-hover:h-24 group-hover:border-red-500/50" />
+
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
+                    <Eye className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-red-400 uppercase tracking-wider">Without privacy</p>
+                    <p className="text-lg font-medium">Public by default</p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                  Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
+                </p>
+
+                <div className="space-y-3">
+                  {['Wallet balances exposed', 'DCA timing visible to bots', 'Full history trackable'].map((text, i) => (
+                    <div
+                      key={text}
+                      className={`flex items-start gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
+                      style={{ transitionDelay: `${300 + i * 100}ms` }}
+                    >
+                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500/70 shrink-0" />
+                      <p className="text-muted-foreground text-sm">{text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Visual indicator */}
+                <div className="mt-8 pt-6 border-t border-red-500/10">
+                  <div className="flex items-center gap-3 text-sm text-red-400">
+                    <Eye className="w-4 h-4 animate-pulse" />
+                    <span>Anyone can watch your moves</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Solution - Right side */}
+          <div className={`group relative transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
+            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/[0.05] to-transparent overflow-hidden transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_40px_rgba(255,99,71,0.15)]">
+              {/* Animated glow */}
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl animate-pulse pointer-events-none" />
+
+              {/* Corner accent */}
+              <div className="absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 border-accent/30 rounded-tr-2xl transition-all duration-300 group-hover:w-24 group-hover:h-24 group-hover:border-accent/50" />
+
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(255,99,71,0.3)]">
+                    <EyeOff className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-accent uppercase tracking-wider">With <span className="text-accent">cloak</span></p>
+                    <p className="text-lg font-medium">Invisible by design</p>
+                  </div>
+                </div>
+
+                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                  Zero-knowledge proofs break the link between your wallet and trades. No one can trace your activity.
+                </p>
+
+                <div className="space-y-3">
+                  {['Shielded balances', 'Private execution', 'Unlinkable transactions'].map((text, i) => (
+                    <div
+                      key={text}
+                      className={`flex items-start gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
+                      style={{ transitionDelay: `${500 + i * 100}ms` }}
+                    >
+                      <Check className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                      <p className="text-foreground text-sm font-medium">{text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Visual indicator */}
+                <div className="mt-8 pt-6 border-t border-accent/10">
+                  <div className="flex items-center gap-3 text-sm text-accent">
+                    <EyeOff className="w-4 h-4" />
+                    <span>Your identity stays private</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile arrow */}
+        <div className={`lg:hidden flex justify-center -my-3 relative z-10 transition-all duration-500 delay-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="w-10 h-10 rounded-full bg-background border-2 border-accent/50 flex items-center justify-center rotate-90">
+            <ArrowRight className="w-4 h-4 text-accent" />
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
