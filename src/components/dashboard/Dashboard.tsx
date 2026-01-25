@@ -231,12 +231,7 @@ export function Dashboard() {
       console.error('Error fetching wallet transactions:', error);
     }
 
-    // Fetch trade executions if there are strategies
-    if (!hasStrategies) {
-      setRecentExecutions([]);
-      return;
-    }
-
+    // Fetch trade executions from all DCAs (including completed/cancelled)
     try {
       const configsResponse = await fetch('/api/dca/list', {
         headers: { 'x-wallet-address': walletAddress },
