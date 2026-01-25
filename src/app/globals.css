@@ -1,8 +1,9 @@
-/* Cloak - Clean, minimal design */
+/* Cloak - Clean, professional design */
 
+/* Prevent FOUC */
 html {
-  background-color: #030303;
-  color: #fafafa;
+  background-color: #000000;
+  color: #ffffff;
 }
 
 @import "tailwindcss";
@@ -13,8 +14,8 @@ html {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-syne), system-ui, sans-serif;
-  --font-mono: var(--font-space-mono), monospace;
+  --font-sans: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -31,31 +32,31 @@ html {
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
 }
 
 :root {
-  --background: #030303;
-  --foreground: #fafafa;
+  --background: #000000;
+  --foreground: #ffffff;
   --card: #0a0a0a;
-  --card-foreground: #fafafa;
+  --card-foreground: #ffffff;
   --popover: #0a0a0a;
-  --popover-foreground: #fafafa;
-  --primary: #fafafa;
-  --primary-foreground: #030303;
-  --secondary: #111111;
-  --secondary-foreground: #fafafa;
-  --muted: #171717;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #141414;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
   --muted-foreground: #737373;
-  --accent: #a855f7;
-  --accent-foreground: #030303;
-  --destructive: #dc2626;
+  --accent: #ff6347;
+  --accent-foreground: #000000;
+  --destructive: #ef4444;
   --success: #22c55e;
   --border: #262626;
   --input: #262626;
-  --ring: #a855f7;
+  --ring: #ff6347;
 }
 
 /* ============================================
@@ -70,12 +71,11 @@ html {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-syne), system-ui, sans-serif;
+    font-family: var(--font-manrope), system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.6;
     letter-spacing: -0.01em;
@@ -92,10 +92,10 @@ html {
    ============================================ */
 
 .text-display {
-  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-size: clamp(3rem, 8vw, 5rem);
   font-weight: 300;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  line-height: 1;
+  letter-spacing: -0.04em;
 }
 
 .text-headline {
@@ -123,20 +123,20 @@ html {
   font-size: 0.6875rem;
   font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
 .text-mono {
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-jetbrains), monospace;
   font-size: 0.875rem;
   letter-spacing: -0.02em;
   font-feature-settings: "tnum" 1;
 }
 
 .text-value {
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-jetbrains), monospace;
   font-size: 2rem;
   font-weight: 400;
   line-height: 1;
@@ -151,7 +151,7 @@ html {
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
 }
 
 .card:hover {
@@ -209,7 +209,7 @@ html {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border-radius: 4px;
+  border-radius: 2px;
   background: var(--muted);
   color: var(--foreground);
 }
@@ -220,12 +220,12 @@ html {
 }
 
 .badge.warning {
-  background: rgba(168, 85, 247, 0.15);
+  background: rgba(255, 99, 71, 0.15);
   color: var(--accent);
 }
 
 .badge.error {
-  background: rgba(220, 38, 38, 0.15);
+  background: rgba(239, 68, 68, 0.15);
   color: var(--destructive);
 }
 
@@ -239,7 +239,7 @@ input, select, textarea {
 }
 
 input[type="number"] {
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-jetbrains), monospace;
   font-feature-settings: "tnum" 1;
   -moz-appearance: textfield;
 }
@@ -270,9 +270,10 @@ input:focus {
   justify-content: center;
   gap: 8px;
   padding: 10px 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 4px;
   transition: all 0.15s ease;
   cursor: pointer;
 }
@@ -284,6 +285,7 @@ input:focus {
 
 .btn-primary:hover {
   opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .btn-accent {
@@ -293,6 +295,7 @@ input:focus {
 
 .btn-accent:hover {
   filter: brightness(1.1);
+  transform: translateY(-1px);
 }
 
 .btn-ghost {
@@ -339,7 +342,7 @@ input:focus {
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -347,8 +350,17 @@ input:focus {
   }
 }
 
+@keyframes glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
 .animate-in {
-  animation: slideUp 0.4s ease-out forwards;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
 }
 
 /* ============================================
@@ -360,15 +372,60 @@ input:focus {
 }
 
 .glow {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+  box-shadow: 0 0 20px rgba(255, 99, 71, 0.3);
 }
 
+.glow-subtle {
+  box-shadow: 0 0 40px rgba(255, 99, 71, 0.1);
+}
+
+/* Accent underline */
+.accent-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.accent-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* Hover reveal */
+.hover-reveal {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.group:hover .hover-reveal {
+  opacity: 1;
+}
+
+/* Section spacing */
 .section {
-  padding: 4rem 0;
+  padding: 6rem 0;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .section {
-    padding: 3rem 0;
+    padding: 4rem 0;
   }
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--muted-foreground) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Border glow on hover */
+.border-glow:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px rgba(255, 99, 71, 0.15);
 }
