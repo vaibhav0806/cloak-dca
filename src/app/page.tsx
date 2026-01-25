@@ -322,7 +322,7 @@ function ComparisonSection() {
           setIsVisible(true);
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
 
     if (sectionRef.current) {
@@ -333,51 +333,119 @@ function ComparisonSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-16 sm:py-24 lg:py-32 border-t border-border overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/20 to-transparent pointer-events-none" />
+    <section ref={sectionRef} className="relative py-20 sm:py-28 lg:py-36 border-t border-border overflow-hidden">
+      {/* Section header */}
+      <div className={`text-center mb-16 sm:mb-20 px-4 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <p className="text-accent text-sm font-medium mb-4 tracking-wide">Why privacy matters</p>
+        <h2 className="text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight">
+          See the difference <span className="text-accent">cloak</span> makes
+        </h2>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        {/* Section header */}
-        <div className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <p className="text-accent text-sm font-medium mb-4">Why privacy matters</p>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
-            See the difference <span className="text-accent">cloak</span> makes
-          </h2>
-        </div>
+      {/* Full-width dramatic comparison */}
+      <div className="relative min-h-[500px] sm:min-h-[550px] lg:min-h-[480px]">
+        {/* EXPOSED SIDE - Left/Top */}
+        <div className={`absolute inset-0 lg:inset-y-0 lg:left-0 lg:right-1/2 transition-all duration-1000 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Red danger gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-red-950/40 via-red-900/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.08] to-transparent" />
 
-        {/* Side by side comparison */}
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-4 relative">
-          {/* Center arrow - visible on lg screens */}
-          <div className={`hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-700 delay-500 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-            <div className="w-14 h-14 rounded-full bg-background border-2 border-accent/50 flex items-center justify-center shadow-[0_0_30px_rgba(255,99,71,0.3)]">
-              <ArrowRight className="w-6 h-6 text-accent" />
+          {/* Animated surveillance grid */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(239,68,68,0.5) 40px, rgba(239,68,68,0.5) 41px),
+                              repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(239,68,68,0.5) 40px, rgba(239,68,68,0.5) 41px)`
+          }} />
+
+          {/* Floating eye icons - surveillance feeling */}
+          <div className="absolute top-[15%] left-[10%] animate-float-slow">
+            <Eye className="w-6 h-6 text-red-500/20" />
+          </div>
+          <div className="absolute top-[60%] left-[20%] animate-float-slower">
+            <Eye className="w-4 h-4 text-red-500/15" />
+          </div>
+          <div className="absolute top-[35%] left-[5%] animate-float">
+            <Eye className="w-5 h-5 text-red-500/10" />
+          </div>
+
+          {/* Exposed data visualization */}
+          <div className="absolute top-[20%] left-[15%] sm:left-[20%] opacity-30">
+            <div className="font-mono text-[10px] text-red-400/60 space-y-1">
+              <div className="animate-pulse">0x7f2c...4e8a</div>
+              <div className="animate-pulse" style={{animationDelay: '0.5s'}}>→ 500 USDC</div>
+              <div className="animate-pulse" style={{animationDelay: '1s'}}>→ SOL swap</div>
             </div>
           </div>
 
-          {/* Problem - Left side */}
-          <div className={`group relative transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'}`}>
-            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/[0.03] to-transparent overflow-hidden transition-all duration-300 hover:border-red-500/40 hover:shadow-[0_0_40px_rgba(239,68,68,0.1)]">
-              {/* Animated scan line */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent animate-scan" />
+          {/* Scan lines */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent animate-scan" />
+            <div className="absolute inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-red-400/20 to-transparent animate-scan" style={{animationDelay: '1.5s'}} />
+          </div>
+        </div>
+
+        {/* PROTECTED SIDE - Right/Bottom */}
+        <div className={`absolute inset-0 lg:inset-y-0 lg:right-0 lg:left-1/2 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Warm protective gradient */}
+          <div className="absolute inset-0 bg-gradient-to-bl from-accent/20 via-accent/5 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-l from-accent/[0.1] to-transparent" />
+
+          {/* Shield pattern overlay */}
+          <div className="absolute inset-0 opacity-[0.02]" style={{
+            backgroundImage: `radial-gradient(circle at 2px 2px, var(--accent) 1px, transparent 1px)`,
+            backgroundSize: '32px 32px'
+          }} />
+
+          {/* Protective glow orbs */}
+          <div className="absolute top-[20%] right-[15%] w-32 h-32 bg-accent/20 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-[30%] right-[25%] w-24 h-24 bg-accent/10 rounded-full blur-2xl animate-pulse" style={{animationDelay: '1s'}} />
+
+          {/* Shield icons */}
+          <div className="absolute top-[25%] right-[12%] animate-float-slow">
+            <Shield className="w-6 h-6 text-accent/20" />
+          </div>
+          <div className="absolute bottom-[35%] right-[8%] animate-float">
+            <Lock className="w-5 h-5 text-accent/15" />
+          </div>
+        </div>
+
+        {/* CENTER DIVIDER - The Cloak Effect */}
+        <div className={`hidden lg:block absolute inset-y-0 left-1/2 w-32 -translate-x-1/2 z-10 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Gradient blend */}
+          <div className="absolute inset-0 bg-gradient-to-r from-red-950/50 via-background to-accent/20" />
+
+          {/* Animated cloak sweep */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute inset-y-0 w-1 left-1/2 -translate-x-1/2 bg-gradient-to-b from-transparent via-accent/50 to-transparent animate-pulse" />
+          </div>
+
+          {/* Center transformation icon */}
+          <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-700 delay-700 ${isVisible ? 'scale-100 rotate-0' : 'scale-0 rotate-180'}`}>
+            <div className="relative">
+              <div className="absolute inset-0 bg-accent/30 rounded-full blur-xl scale-150 animate-pulse" />
+              <div className="relative w-16 h-16 rounded-full bg-background border-2 border-accent flex items-center justify-center shadow-[0_0_40px_rgba(255,99,71,0.4)]">
+                <ArrowRight className="w-6 h-6 text-accent" />
               </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Corner accent */}
-              <div className="absolute top-0 left-0 w-20 h-20 border-l-2 border-t-2 border-red-500/30 rounded-tl-2xl transition-all duration-300 group-hover:w-24 group-hover:h-24 group-hover:border-red-500/50" />
-
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                    <Eye className="w-5 h-5 text-red-400" />
+        {/* CONTENT OVERLAY */}
+        <div className="relative z-20 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 h-full py-8">
+            {/* Left content - Problem */}
+            <div className={`flex flex-col justify-center transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}>
+              <div className="bg-background/60 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-red-500/20 shadow-[0_0_60px_rgba(239,68,68,0.1)]">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center border border-red-500/30">
+                    <Eye className="w-6 h-6 text-red-400" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-red-400 uppercase tracking-wider">Without privacy</p>
-                    <p className="text-lg font-medium">Public by default</p>
+                    <p className="text-xs font-bold text-red-400 uppercase tracking-widest">Exposed</p>
+                    <p className="text-xl font-semibold text-red-100">Public by default</p>
                   </div>
                 </div>
 
-                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                <p className="text-red-200/60 text-sm leading-relaxed mb-6">
                   Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
                 </p>
 
@@ -385,43 +453,27 @@ function ComparisonSection() {
                   {['Wallet balances exposed', 'DCA timing visible to bots', 'Full history trackable'].map((text, i) => (
                     <div
                       key={text}
-                      className={`flex items-start gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
-                      style={{ transitionDelay: `${300 + i * 100}ms` }}
+                      className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
+                      style={{ transitionDelay: `${400 + i * 150}ms` }}
                     >
-                      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500/70 shrink-0" />
-                      <p className="text-muted-foreground text-sm">{text}</p>
+                      <div className="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse" style={{animationDelay: `${i * 0.3}s`}} />
+                      <p className="text-red-200/80 text-sm">{text}</p>
                     </div>
                   ))}
                 </div>
-
-                {/* Visual indicator */}
-                <div className="mt-8 pt-6 border-t border-red-500/10">
-                  <div className="flex items-center gap-3 text-sm text-red-400">
-                    <Eye className="w-4 h-4 animate-pulse" />
-                    <span>Anyone can watch your moves</span>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
 
-          {/* Solution - Right side */}
-          <div className={`group relative transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12'}`}>
-            <div className="relative p-6 sm:p-8 lg:p-10 rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/[0.05] to-transparent overflow-hidden transition-all duration-300 hover:border-accent/40 hover:shadow-[0_0_40px_rgba(255,99,71,0.15)]">
-              {/* Animated glow */}
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent/10 rounded-full blur-3xl animate-pulse pointer-events-none" />
-
-              {/* Corner accent */}
-              <div className="absolute top-0 right-0 w-20 h-20 border-r-2 border-t-2 border-accent/30 rounded-tr-2xl transition-all duration-300 group-hover:w-24 group-hover:h-24 group-hover:border-accent/50" />
-
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(255,99,71,0.3)]">
-                    <EyeOff className="w-5 h-5 text-accent" />
+            {/* Right content - Solution */}
+            <div className={`flex flex-col justify-center transition-all duration-700 delay-400 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
+              <div className="bg-background/60 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-accent/30 shadow-[0_0_60px_rgba(255,99,71,0.15)]">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center border border-accent/30 shadow-[0_0_20px_rgba(255,99,71,0.2)]">
+                    <EyeOff className="w-6 h-6 text-accent" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-accent uppercase tracking-wider">With <span className="text-accent">cloak</span></p>
-                    <p className="text-lg font-medium">Invisible by design</p>
+                    <p className="text-xs font-bold text-accent uppercase tracking-widest">Protected</p>
+                    <p className="text-xl font-semibold">Invisible by design</p>
                   </div>
                 </div>
 
@@ -433,31 +485,25 @@ function ComparisonSection() {
                   {['Shielded balances', 'Private execution', 'Unlinkable transactions'].map((text, i) => (
                     <div
                       key={text}
-                      className={`flex items-start gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
-                      style={{ transitionDelay: `${500 + i * 100}ms` }}
+                      className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
+                      style={{ transitionDelay: `${600 + i * 150}ms` }}
                     >
-                      <Check className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                      <div className="w-5 h-5 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-accent" />
+                      </div>
                       <p className="text-foreground text-sm font-medium">{text}</p>
                     </div>
                   ))}
-                </div>
-
-                {/* Visual indicator */}
-                <div className="mt-8 pt-6 border-t border-accent/10">
-                  <div className="flex items-center gap-3 text-sm text-accent">
-                    <EyeOff className="w-4 h-4" />
-                    <span>Your identity stays private</span>
-                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Mobile arrow */}
-        <div className={`lg:hidden flex justify-center -my-3 relative z-10 transition-all duration-500 delay-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="w-10 h-10 rounded-full bg-background border-2 border-accent/50 flex items-center justify-center rotate-90">
-            <ArrowRight className="w-4 h-4 text-accent" />
+        {/* Mobile center arrow */}
+        <div className={`lg:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 transition-all duration-500 delay-300 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+          <div className="w-12 h-12 rounded-full bg-background border-2 border-accent flex items-center justify-center shadow-[0_0_30px_rgba(255,99,71,0.3)] rotate-90">
+            <ArrowRight className="w-5 h-5 text-accent" />
           </div>
         </div>
       </div>
