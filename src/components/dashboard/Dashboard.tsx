@@ -1197,13 +1197,13 @@ function StrategyCard({
 
           <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Next execution</p>
+              <p className="text-xs text-muted-foreground mb-0.5">Next trade</p>
               <p className="font-medium">
                 {isActive ? formatDistanceToNow(new Date(config.next_execution), { addSuffix: true }) : '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground mb-0.5">Deployed</p>
+              <p className="text-xs text-muted-foreground mb-0.5">Spent</p>
               <p className="font-medium text-mono">
                 {(config.completed_trades * config.amount_per_trade).toFixed(2)} {inputToken.symbol}
               </p>

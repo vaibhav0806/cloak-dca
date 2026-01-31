@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { TOKENS } from '@/lib/solana/constants';
 import { getExplorerUrl } from '@/lib/solana/connection';
+import { privacyClient } from '@/lib/privacy';
 
 interface SessionBalance {
   token: typeof TOKENS.SOL;
@@ -80,6 +81,9 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
     setWithdrawSuccess(null);
 
     try {
+      // Get session keypair from privacy client
+      const sessionKeypairBase64 = await privacyClient.exportSessionKeypair();
+
       const response = await fetch('/api/session/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,6 +91,7 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
           walletAddress: publicKey.toBase58(),
           tokenMint: token.mint,
           amount,
+          sessionKeypairBase64,
         }),
       });
 
