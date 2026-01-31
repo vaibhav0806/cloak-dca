@@ -286,11 +286,6 @@ export async function GET(request: NextRequest) {
         let swapSignature: string;
         let outputAmount: number;
 
-        // Capture pre-swap SOL balance so we only deposit the swap output, not the gas funds
-        const preSwapSolBalance = outputMint === SOL_MINT
-          ? await connection.getBalance(sessionPublicKey)
-          : 0;
-
         try {
           // Get swap quote with actual available amount
           const quote = await getQuote({
@@ -334,155 +329,12 @@ export async function GET(request: NextRequest) {
           throw new Error(`Jupiter swap failed: ${swapError instanceof Error ? swapError.message : 'Unknown error'}`);
         }
 
-        // Step 3: Deposit output to Privacy Cash (shield output tokens)
-        // Check actual balance received (may differ from quote due to slippage)
-        let actualOutputAmount = outputAmount;
-        if (outputMint === SOL_MINT) {
-          // Get actual SOL balance and calculate how much we received from the swap
-          const postSwapBalance = await connection.getBalance(sessionPublicKey);
-          // Only shield the SOL we received from the swap, NOT the gas funds
-          const swapOutput = postSwapBalance - preSwapSolBalance;
-
-          if (swapOutput > 0) {
-            actualOutputAmount = swapOutput;
-            console.log(`SOL received from swap: ${actualOutputAmount / 1e9} SOL (gas funds preserved: ${preSwapSolBalance / 1e9} SOL)`);
-          } else {
-            console.log(`No SOL increase from swap. Pre: ${preSwapSolBalance / 1e9}, Post: ${postSwapBalance / 1e9}`);
-            // Skip re-shielding but still count as success since swap worked
-            actualOutputAmount = 0;
-          }
-        } else {
-          // For tokens, check actual token balance
-          try {
-            const outputMintPubkey = new PublicKey(outputMint);
-            const outputAta = await getAssociatedTokenAddress(outputMintPubkey, sessionPublicKey);
-            const outputTokenInfo = await connection.getTokenAccountBalance(outputAta);
-            actualOutputAmount = Number(outputTokenInfo.value.amount);
-            console.log(`Actual token balance to shield: ${outputTokenInfo.value.uiAmount}`);
-          } catch {
-            console.log(`Could not check output token balance, using quote amount`);
-          }
-        }
-
-        // Skip re-shielding if nothing to shield
-        if (actualOutputAmount <= 0) {
-          console.log(`Skipping re-shield (nothing to deposit), marking trade as complete`);
-
-          // outputDecimals already defined above
-          const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
-
-          await supabase
-            .from('executions')
-            .update({
-              status: 'success',
-              tx_signature: swapSignature,
-              output_amount: outputAmountDecimal,
-              error_message: 'Re-shield skipped (insufficient balance after fees)',
-            })
-            .eq('id', execution.id);
-
-          const newCompletedTrades = dca.completed_trades + 1;
-          const isCompleted = newCompletedTrades >= dca.total_trades;
-
-          await supabase
-            .from('dca_configs')
-            .update({
-              completed_trades: newCompletedTrades,
-              status: isCompleted ? 'completed' : 'active',
-              next_execution: isCompleted ? null : addHours(now, dca.frequency_hours).toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq('id', dca.id);
-
-          results.push({
-            id: dca.id,
-            status: 'success',
-            trade: newCompletedTrades,
-            txSignature: swapSignature,
-            inputAmount: actualInputAmount / Math.pow(10, inputDecimals),
-            outputAmount: outputAmountDecimal,
-            note: 'Re-shield skipped, output in session wallet',
-          });
-
-          console.log(`Executed trade ${newCompletedTrades}/${dca.total_trades} for DCA ${dca.id} (no re-shield)`);
-          continue;
-        }
-
-        console.log(`Depositing ${actualOutputAmount / Math.pow(10, outputDecimals)} to Privacy Cash`);
-
-        let depositResult;
-        try {
-          depositResult = await withRetry(
-            async () => {
-              if (outputMint === SOL_MINT) {
-                return await privacyClient.depositSOL(actualOutputAmount);
-              } else if (outputMint === USDC_MINT) {
-                return await privacyClient.depositUSDC(actualOutputAmount);
-              } else {
-                return await privacyClient.depositSPL(outputMint, actualOutputAmount);
-              }
-            },
-            3, // max 3 retries
-            3000, // 3 second base delay
-            'Privacy Cash deposit'
-          );
-          console.log(`Deposit tx: ${depositResult.tx}`);
-        } catch (depositError) {
-          console.error(`Deposit failed for DCA ${dca.id}:`, depositError);
-          // Note: Swap succeeded but deposit failed - output tokens are in session wallet
-          // Mark as partial success - the swap worked, just re-shielding failed
-          console.log(`Swap succeeded but re-shielding failed. Output tokens remain in session wallet.`);
-
-          // Still mark as success since the swap completed - user has their tokens
-          // outputDecimals already defined above
-          const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
-
-          await supabase
-            .from('executions')
-            .update({
-              status: 'success',
-              tx_signature: swapSignature,
-              output_amount: outputAmountDecimal,
-              error_message: 'Re-shielding failed - tokens in session wallet',
-            })
-            .eq('id', execution.id);
-
-          // Update DCA config
-          const newCompletedTrades = dca.completed_trades + 1;
-          const isCompleted = newCompletedTrades >= dca.total_trades;
-
-          await supabase
-            .from('dca_configs')
-            .update({
-              completed_trades: newCompletedTrades,
-              status: isCompleted ? 'completed' : 'active',
-              next_execution: isCompleted
-                ? null
-                : addHours(now, dca.frequency_hours).toISOString(),
-              updated_at: now.toISOString(),
-            })
-            .eq('id', dca.id);
-
-          results.push({
-            id: dca.id,
-            status: 'partial',
-            trade: newCompletedTrades,
-            txSignature: swapSignature,
-            inputAmount: actualInputAmount / Math.pow(10, inputDecimals),
-            outputAmount: outputAmountDecimal,
-            warning: 'Swap succeeded but re-shielding failed. Tokens in session wallet.',
-          });
-
-          console.log(
-            `Executed trade ${newCompletedTrades}/${dca.total_trades} for DCA ${dca.id} (partial - re-shield failed)`
-          );
-          continue; // Move to next DCA
-        }
+        // Output tokens stay in session wallet (user can withdraw via "Ready to Withdraw")
+        // No re-shielding - simpler flow and tokens are immediately visible
+        const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
+        console.log(`Swap complete. ${outputAmountDecimal} ${outputMint === SOL_MINT ? 'SOL' : 'tokens'} now in session wallet`);
 
         // Update execution with success
-        // outputDecimals already defined above
-        const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
-
         await supabase
           .from('executions')
           .update({
