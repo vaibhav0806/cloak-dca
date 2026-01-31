@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Button } from '@/components/ui/button';
 import {
-  Wallet,
   ArrowUpRight,
   RefreshCw,
   Check,
   Loader2,
   ExternalLink,
+  Coins,
 } from 'lucide-react';
 import { TOKENS } from '@/lib/solana/constants';
 import { getExplorerUrl } from '@/lib/solana/connection';
@@ -28,6 +28,7 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
   const { publicKey } = useWallet();
   const [balances, setBalances] = useState<SessionBalance[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState<string | null>(null);
   const [withdrawSuccess, setWithdrawSuccess] = useState<{ token: string; tx: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,7 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
       setError('Failed to load balances');
     } finally {
       setIsLoading(false);
+      setHasFetched(true);
     }
   }, [sessionPublicKey]);
 
@@ -105,45 +107,43 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
     }
   };
 
-  // Don't render if no balances
-  if (!sessionPublicKey || (balances.length === 0 && !isLoading)) {
+  // Don't render if no session key, or if we've fetched and have no balances
+  if (!sessionPublicKey || (hasFetched && balances.length === 0)) {
+    return null;
+  }
+
+  // Don't show anything during initial fetch
+  if (!hasFetched && isLoading) {
     return null;
   }
 
   return (
     <section className="mb-14">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-medium">DCA Tokens</h2>
-          <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted">
-            <Wallet className="h-3 w-3 text-muted-foreground" />
-          </div>
-        </div>
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-lg font-medium">Ready to Withdraw</h2>
         <button
           onClick={fetchBalances}
           disabled={isLoading}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors p-1"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-4">
-        Tokens from your DCA trades, ready to withdraw to your wallet.
-      </p>
-
       {/* Success message */}
       {withdrawSuccess && (
-        <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-green-400">
-            <Check className="h-4 w-4" />
-            <span>Withdrew {withdrawSuccess.token} to your wallet</span>
+        <div className="mb-4 flex items-center justify-between py-3 px-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <Check className="h-4 w-4 text-emerald-400" />
+            </div>
+            <span className="text-sm text-emerald-400">Withdrew {withdrawSuccess.token} to your wallet</span>
           </div>
           <a
             href={getExplorerUrl(withdrawSuccess.tx)}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-green-400 hover:text-green-300 transition-colors"
+            className="text-emerald-400 hover:text-emerald-300 transition-colors p-1"
           >
             <ExternalLink className="h-4 w-4" />
           </a>
@@ -152,81 +152,67 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
 
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive">
+        <div className="mb-4 py-3 px-4 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
           {error}
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && balances.length === 0 ? (
-        <div className="p-6 rounded-lg bg-card border border-border">
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading balances...</span>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {balances.map((balance) => (
-            <div
-              key={balance.token.mint}
-              className="p-4 rounded-lg bg-card border border-border flex items-center justify-between group hover:border-border/80 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {balance.token.logoURI ? (
-                  <img
-                    src={balance.token.logoURI}
-                    alt=""
-                    className="h-9 w-9 rounded-full"
-                  />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                    {balance.token.symbol.slice(0, 2)}
-                  </div>
-                )}
-                <div>
-                  <p className="font-medium">{balance.token.symbol}</p>
-                  <p className="text-sm text-muted-foreground">{balance.token.name}</p>
+      {/* Token list */}
+      <div className="space-y-1">
+        {balances.map((balance) => (
+          <div
+            key={balance.token.mint}
+            className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item"
+          >
+            <div className="flex items-center gap-3">
+              {balance.token.logoURI ? (
+                <img
+                  src={balance.token.logoURI}
+                  alt=""
+                  className="h-8 w-8 rounded-lg"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                  <Coins className="h-4 w-4 text-muted-foreground" />
                 </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-mono font-medium">
-                    {balance.amount.toLocaleString('en-US', {
-                      minimumFractionDigits: balance.token.decimals > 6 ? 6 : 2,
-                      maximumFractionDigits: balance.token.decimals > 6 ? 6 : 4,
-                    })}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {balance.token.symbol}
-                  </p>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleWithdraw(balance.token, balance.amount)}
-                  disabled={isWithdrawing === balance.token.mint}
-                  className="gap-1.5 min-w-[100px]"
-                >
-                  {isWithdrawing === balance.token.mint ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <ArrowUpRight className="h-3 w-3" />
-                      Withdraw
-                    </>
-                  )}
-                </Button>
+              )}
+              <div>
+                <p className="text-sm font-medium">{balance.token.symbol}</p>
+                <p className="text-xs text-muted-foreground">{balance.token.name}</p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-mono tabular-nums">
+                {balance.amount.toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: balance.token.decimals > 6 ? 6 : 4,
+                })}
+              </p>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleWithdraw(balance.token, balance.amount)}
+                disabled={isWithdrawing === balance.token.mint}
+                className="gap-1.5 h-8 px-3 text-muted-foreground hover:text-foreground"
+              >
+                {isWithdrawing === balance.token.mint ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span className="text-xs">Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUpRight className="h-3.5 w-3.5" />
+                    <span className="text-xs">Withdraw</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

@@ -217,7 +217,7 @@ export function CreateDCAModal() {
           {/* Frequency */}
           <div>
             <label className="text-label block mb-2">Frequency</label>
-            <Select value={frequencyHours.toString()} onValueChange={(v) => setFrequencyHours(parseInt(v))}>
+            <Select value={frequencyHours.toString()} onValueChange={(v) => setFrequencyHours(parseFloat(v))}>
               <SelectTrigger className="bg-muted border-border">
                 <SelectValue />
               </SelectTrigger>

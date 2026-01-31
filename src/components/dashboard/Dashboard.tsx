@@ -11,6 +11,7 @@ import {
   Plus,
   ArrowDownToLine,
   ArrowUpFromLine,
+  ArrowLeftRight,
   Check,
   X,
   Copy,
@@ -24,6 +25,7 @@ import {
   ChevronRight,
   Shield,
   Settings,
+  Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
@@ -206,6 +208,13 @@ export function Dashboard() {
     return () => clearInterval(interval);
   }, [sessionKey, setupStep]);
 
+  // Sync setupStep with sessionFunded - if SOL drops below threshold, show fund_gas step
+  useEffect(() => {
+    if (sessionBalance !== null && setupStep === 'ready' && !sessionFunded) {
+      setSetupStep('fund_gas');
+    }
+  }, [sessionBalance, setupStep, sessionFunded]);
+
   // Fetch recent executions and transactions
   useEffect(() => {
     if (publicKey) {
@@ -274,6 +283,7 @@ export function Dashboard() {
 
     // Check if session wallet needs gas
     if (!sessionFunded) {
+      console.log('Session wallet needs gas. Current balance:', sessionBalance, 'SOL, required: 0.005 SOL');
       setSetupStep('fund_gas');
       return;
     }
@@ -707,84 +717,127 @@ export function Dashboard() {
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-3">
-            <Button
-              variant={showDeposit ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setShowDeposit(!showDeposit); setShowWithdraw(false); }}
-              className="gap-2"
+          {/* Action Tabs */}
+          <div className="inline-flex gap-2 mb-4">
+            <button
+              onClick={() => { setShowDeposit(true); setShowWithdraw(false); }}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
+                showDeposit
+                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600'
+                  : 'bg-transparent text-zinc-500 border-transparent hover:text-zinc-300'
+              }`}
             >
-              <ArrowDownToLine className="h-4 w-4" />
-              Add Funds
-            </Button>
-            <Button
-              variant={showWithdraw ? 'default' : 'outline'}
-              size="sm"
+              Deposit
+            </button>
+            <button
               onClick={() => {
-                setShowWithdraw(!showWithdraw);
+                setShowWithdraw(true);
                 setShowDeposit(false);
                 if (balances.length > 0) setWithdrawToken(balances[0].token.mint);
               }}
-              className="gap-2"
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
+                showWithdraw
+                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600'
+                  : 'bg-transparent text-zinc-500 border-transparent hover:text-zinc-300'
+              }`}
             >
-              <ArrowUpFromLine className="h-4 w-4" />
               Withdraw
-            </Button>
+            </button>
           </div>
 
-          {/* Deposit Panel */}
+          {/* Deposit Input */}
           {showDeposit && (
-            <div className="mt-4 p-5 rounded-lg bg-card border border-border">
-              <p className="text-sm text-muted-foreground mb-3">Add USDC to your private balance</p>
-              <div className="flex gap-3">
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="flex-1 px-4 py-2.5 bg-background border border-border rounded-lg text-mono"
-                  autoFocus
-                />
-                <Button onClick={handleDeposit} disabled={isDepositing || !depositAmount}>
-                  {isDepositing ? 'Adding...' : 'Confirm'}
-                </Button>
+            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border border-border">
+              <div className="flex items-center gap-2 pl-3 pr-2 py-2 text-muted-foreground">
+                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" alt="" className="h-5 w-5 rounded-full" />
+                <span className="text-sm font-medium text-foreground">USDC</span>
               </div>
+              <input
+                type="number"
+                placeholder="0.00"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                className="flex-1 bg-transparent text-lg font-medium text-mono placeholder:text-muted-foreground/50 focus:outline-none text-right pr-2"
+                autoFocus
+              />
+              <Button
+                onClick={handleDeposit}
+                disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
+                size="sm"
+                className="h-10 px-5 rounded-lg"
+              >
+                {isDepositing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Deposit'
+                )}
+              </Button>
             </div>
           )}
 
-          {/* Withdraw Panel */}
+          {/* Withdraw Input */}
           {showWithdraw && (
-            <div className="mt-4 p-5 rounded-lg bg-card border border-border">
-              <p className="text-sm text-muted-foreground mb-3">Withdraw to your connected wallet</p>
-              <div className="space-y-3">
-                {balances.length > 1 && (
-                  <select
-                    value={withdrawToken}
-                    onChange={(e) => setWithdrawToken(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm"
-                  >
-                    {balances.map((b) => (
-                      <option key={b.token.mint} value={b.token.mint}>
-                        {b.token.symbol} — {b.amount.toFixed(2)} available
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <div className="flex gap-3">
-                  <input
-                    type="number"
-                    placeholder="Amount"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    className="flex-1 px-4 py-2.5 bg-background border border-border rounded-lg text-mono"
-                    autoFocus
-                  />
-                  <Button onClick={handleWithdraw} disabled={isWithdrawing || !withdrawAmount}>
-                    {isWithdrawing ? 'Sending...' : 'Confirm'}
-                  </Button>
+            <div className="space-y-3">
+              {balances.length > 1 && (
+                <div className="flex gap-2">
+                  {balances.filter(b => b.amount > 0).map((b) => (
+                    <button
+                      key={b.token.mint}
+                      onClick={() => setWithdrawToken(b.token.mint)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                        withdrawToken === b.token.mint
+                          ? 'bg-muted border border-border text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {b.token.logoURI && <img src={b.token.logoURI} alt="" className="h-4 w-4 rounded-full" />}
+                      <span className="font-medium">{b.token.symbol}</span>
+                    </button>
+                  ))}
                 </div>
+              )}
+              <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border border-border">
+                <div className="flex items-center gap-2 pl-3 pr-2 py-2 text-muted-foreground">
+                  {(() => {
+                    const selectedBalance = balances.find(b => b.token.mint === withdrawToken);
+                    return selectedBalance?.token.logoURI ? (
+                      <img src={selectedBalance.token.logoURI} alt="" className="h-5 w-5 rounded-full" />
+                    ) : null;
+                  })()}
+                  <span className="text-sm font-medium text-foreground">
+                    {balances.find(b => b.token.mint === withdrawToken)?.token.symbol || 'Select'}
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  className="flex-1 bg-transparent text-lg font-medium text-mono placeholder:text-muted-foreground/50 focus:outline-none text-right pr-2"
+                  autoFocus
+                />
+                <Button
+                  onClick={handleWithdraw}
+                  disabled={isWithdrawing || !withdrawAmount || Number(withdrawAmount) <= 0}
+                  size="sm"
+                  className="h-10 px-5 rounded-lg"
+                >
+                  {isWithdrawing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Withdraw'
+                  )}
+                </Button>
               </div>
+              <button
+                onClick={() => {
+                  const selectedBalance = balances.find(b => b.token.mint === withdrawToken);
+                  if (selectedBalance) setWithdrawAmount(selectedBalance.amount.toString());
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Max: {balances.find(b => b.token.mint === withdrawToken)?.amount.toFixed(2) || '0.00'}
+              </button>
             </div>
           )}
         </section>
@@ -847,11 +900,7 @@ export function Dashboard() {
             </div>
           ) : allStrategies.length === 0 ? (
             <div className="p-10 rounded-lg bg-card border border-dashed border-border text-center">
-              <p className="text-muted-foreground mb-3">No active strategies</p>
-              <Button onClick={() => setCreateModalOpen(true)} variant="outline" size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Strategy
-              </Button>
+              <p className="text-muted-foreground">No active strategies</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -918,9 +967,11 @@ export function Dashboard() {
                         const isSuccess = exec.status === 'success';
 
                         return (
-                          <div key={`trade-${exec.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                          <div key={`trade-${exec.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item">
                             <div className="flex items-center gap-3">
-                              <div className={`w-2 h-2 rounded-full ${isSuccess ? 'bg-green-500' : 'bg-red-500'}`} />
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isSuccess ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                                <ArrowLeftRight className="h-4 w-4" />
+                              </div>
                               <div>
                                 <p className="text-sm">
                                   <span className="font-medium">{exec.input_amount} {inputToken.symbol}</span>
@@ -937,7 +988,7 @@ export function Dashboard() {
                                 href={getExplorerUrl(exec.tx_signature)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-accent transition-colors p-1.5"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100"
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
@@ -950,9 +1001,11 @@ export function Dashboard() {
                         const isDeposit = activity.type === 'deposit';
 
                         return (
-                          <div key={`tx-${tx.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                          <div key={`tx-${tx.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item">
                             <div className="flex items-center gap-3">
-                              <div className={`w-2 h-2 rounded-full ${isDeposit ? 'bg-accent' : 'bg-orange-500'}`} />
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDeposit ? 'bg-sky-500/15 text-sky-400' : 'bg-orange-500/15 text-orange-400'}`}>
+                                {isDeposit ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
+                              </div>
                               <div>
                                 <p className="text-sm">
                                   <span className="font-medium">{isDeposit ? 'Deposited' : 'Withdrew'}</span>
@@ -969,7 +1022,7 @@ export function Dashboard() {
                                 href={getExplorerUrl(tx.tx_signature)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-accent transition-colors p-1.5"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100"
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>

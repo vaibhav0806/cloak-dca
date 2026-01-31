@@ -64,6 +64,7 @@ export const DEVNET_TOKENS = {
 } as const;
 
 export const FREQUENCY_OPTIONS = [
+  { label: 'Every 5 mins (Test)', value: 5 / 60 },
   { label: 'Every hour', value: 1 },
   { label: 'Every 4 hours', value: 4 },
   { label: 'Every 12 hours', value: 12 },
