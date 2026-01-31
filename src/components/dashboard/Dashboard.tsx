@@ -52,7 +52,7 @@ function calculateDCAFundingStatus(
 
   // Sort by next execution time (earliest first)
   const sortedConfigs = [...activeConfigs]
-    .filter(c => c.status === 'active')
+    .filter(c => c.status === 'active' || c.status === 'executing')
     .sort((a, b) => new Date(a.next_execution).getTime() - new Date(b.next_execution).getTime());
 
   let remainingBalance = totalBalance;
@@ -126,7 +126,7 @@ export function Dashboard() {
   // Calculate DCA funding status
   const dcaFundingStatus = calculateDCAFundingStatus(activeConfigs, totalShielded);
   const totalDCARequirement = activeConfigs
-    .filter(c => c.status === 'active')
+    .filter(c => c.status === 'active' || c.status === 'executing')
     .reduce((sum, config) => sum + config.amount_per_trade, 0);
   const hasUnderfundedDCAs = totalShielded < totalDCARequirement && activeConfigs.length > 0;
   const fundingShortfall = Math.max(0, totalDCARequirement - totalShielded);
@@ -971,12 +971,20 @@ export function Dashboard() {
                         const inputToken = getTokenInfo(exec.input_token);
                         const outputToken = getTokenInfo(exec.output_token);
                         const isSuccess = exec.status === 'success';
+                        const isPending = exec.status === 'pending';
+
+                        // Style based on status: success=green, pending=amber, failed=red
+                        const statusStyles = isSuccess
+                          ? 'bg-emerald-500/15 text-emerald-400'
+                          : isPending
+                            ? 'bg-amber-500/15 text-amber-400'
+                            : 'bg-red-500/15 text-red-400';
 
                         return (
                           <div key={`trade-${exec.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item">
                             <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isSuccess ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                                <ArrowLeftRight className="h-4 w-4" />
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${statusStyles}`}>
+                                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
                               </div>
                               <div>
                                 <p className="text-sm">

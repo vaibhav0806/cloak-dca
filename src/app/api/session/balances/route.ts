@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
           const rawBalance = data.readBigUInt64LE(64);
           const amount = Number(rawBalance) / Math.pow(10, token.decimals);
 
-          if (amount > 0) {
+          // Only show if above dust threshold (0.0001) to avoid displaying "0.00"
+          if (amount > 0.0001) {
             balances.push({
               token,
               amount,

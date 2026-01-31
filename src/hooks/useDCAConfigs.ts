@@ -76,7 +76,8 @@ export function useDCAConfigs() {
   );
 
   const getActiveConfigs = useCallback(() => {
-    return dcaConfigs.filter((c) => c.status === 'active');
+    // Include 'executing' status since it's still an active DCA, just currently running a trade
+    return dcaConfigs.filter((c) => c.status === 'active' || c.status === 'executing');
   }, [dcaConfigs]);
 
   const getPausedConfigs = useCallback(() => {

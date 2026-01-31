@@ -14,7 +14,7 @@ export interface DCAConfig {
   frequency_hours: number;
   total_trades: number;
   completed_trades: number;
-  status: 'active' | 'paused' | 'completed' | 'cancelled';
+  status: 'active' | 'paused' | 'completed' | 'cancelled' | 'executing';
   encrypted_data: string;
   next_execution: string;
   created_at: string;
