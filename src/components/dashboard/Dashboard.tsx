@@ -718,16 +718,19 @@ export function Dashboard() {
           )}
 
           {/* Action Tabs */}
-          <div className="inline-flex gap-2 mb-4">
+          <div className="inline-flex gap-6 mb-5 border-b border-zinc-800">
             <button
               onClick={() => { setShowDeposit(true); setShowWithdraw(false); }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
+              className={`pb-3 text-sm font-medium transition-all relative ${
                 showDeposit
-                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600'
-                  : 'bg-transparent text-zinc-500 border-transparent hover:text-zinc-300'
+                  ? 'text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Deposit
+              {showDeposit && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-100 rounded-full" />
+              )}
             </button>
             <button
               onClick={() => {
@@ -735,13 +738,16 @@ export function Dashboard() {
                 setShowDeposit(false);
                 if (balances.length > 0) setWithdrawToken(balances[0].token.mint);
               }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all border ${
+              className={`pb-3 text-sm font-medium transition-all relative ${
                 showWithdraw
-                  ? 'bg-zinc-800 text-zinc-100 border-zinc-600'
-                  : 'bg-transparent text-zinc-500 border-transparent hover:text-zinc-300'
+                  ? 'text-zinc-100'
+                  : 'text-zinc-500 hover:text-zinc-300'
               }`}
             >
               Withdraw
+              {showWithdraw && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-100 rounded-full" />
+              )}
             </button>
           </div>
 
