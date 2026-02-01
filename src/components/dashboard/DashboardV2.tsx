@@ -437,7 +437,7 @@ export function DashboardV2() {
                       </div>
                       <h4 className="font-medium mb-2">Quick Setup Required</h4>
                       <p className="text-sm text-muted-foreground">
-                        Send a small amount of SOL (~0.05) to cover transaction fees for your DCA trades.
+                        Send a small amount of SOL (~0.01) to cover transaction fees for your DCA trades.
                       </p>
                     </div>
 

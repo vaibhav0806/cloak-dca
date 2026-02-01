@@ -498,7 +498,7 @@ export function Dashboard() {
                   </div>
                   <div>
                     <h2 className="font-medium">One-time Setup</h2>
-                    <p className="text-sm text-muted-foreground">Send ~0.05 SOL for transaction fees</p>
+                    <p className="text-sm text-muted-foreground">Send ~0.01 SOL for transaction fees</p>
                   </div>
                 </div>
 
