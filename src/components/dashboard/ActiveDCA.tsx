@@ -13,6 +13,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { formatDistanceToNow } from 'date-fns';
 import { TOKENS } from '@/lib/solana/constants';
 import type { DCAConfig } from '@/types';
+import { analytics } from '@/lib/analytics';
 
 function getTokenInfo(mint: string) {
   const token = Object.values(TOKENS).find((t) => t.mint === mint);
@@ -58,19 +59,19 @@ function DCACard({ config, onPause, onResume, onCancel }: DCACardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="card">
               {config.status === 'active' && (
-                <DropdownMenuItem onClick={() => onPause(config.id)}>
+                <DropdownMenuItem onClick={() => { analytics.dcaPaused(); onPause(config.id); }}>
                   <Pause className="mr-2 h-4 w-4" />
                   Pause
                 </DropdownMenuItem>
               )}
               {config.status === 'paused' && (
-                <DropdownMenuItem onClick={() => onResume(config.id)}>
+                <DropdownMenuItem onClick={() => { analytics.dcaResumed(); onResume(config.id); }}>
                   <Play className="mr-2 h-4 w-4" />
                   Resume
                 </DropdownMenuItem>
               )}
               {(config.status === 'active' || config.status === 'paused') && (
-                <DropdownMenuItem onClick={() => onCancel(config.id)} className="text-destructive">
+                <DropdownMenuItem onClick={() => { analytics.dcaCancelled(); onCancel(config.id); }} className="text-destructive">
                   <X className="mr-2 h-4 w-4" />
                   Cancel
                 </DropdownMenuItem>

@@ -14,6 +14,7 @@ import {
 import { TOKENS } from '@/lib/solana/constants';
 import { getExplorerUrl } from '@/lib/solana/connection';
 import { privacyClient } from '@/lib/privacy';
+import { analytics } from '@/lib/analytics';
 
 interface SessionBalance {
   token: typeof TOKENS.SOL;
@@ -98,6 +99,7 @@ export function SessionWallet({ sessionPublicKey }: SessionWalletProps) {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        analytics.withdrawCompleted(token.symbol, amount);
         setWithdrawSuccess({ token: token.symbol, tx: data.signature });
         // Refresh balances after short delay
         setTimeout(fetchBalances, 2000);

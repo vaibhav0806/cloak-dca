@@ -12,6 +12,7 @@ import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useAppStore } from '@/store';
 import { resetPrivacyClient } from '@/lib/privacy';
+import { analytics } from '@/lib/analytics';
 
 // Import wallet adapter styles
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -24,11 +25,15 @@ function WalletConnectionHandler({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (connected && publicKey) {
       setWallet(publicKey.toBase58());
+      if (!prevConnected.current) {
+        analytics.walletConnected();
+      }
       prevConnected.current = true;
     } else if (prevConnected.current) {
       // Only reset when disconnecting from a previously connected state
       setWallet(null);
       resetPrivacyClient();
+      analytics.walletDisconnected();
       prevConnected.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

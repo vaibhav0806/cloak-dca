@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, ArrowDown, ArrowUp, Copy, Check } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { SUPPORTED_INPUT_TOKENS } from '@/lib/solana/constants';
+import { analytics } from '@/lib/analytics';
 
 export function ShieldedBalance() {
   const { connected, publicKey } = useWallet();
@@ -36,9 +37,12 @@ export function ShieldedBalance() {
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(Number(depositAmount))) return;
     setIsDepositing(true);
+    const amount = Number(depositAmount);
+    analytics.depositStarted(amount);
     try {
       const usdcToken = SUPPORTED_INPUT_TOKENS[0];
-      const result = await deposit(usdcToken.mint, Number(depositAmount));
+      const result = await deposit(usdcToken.mint, amount);
+      analytics.depositCompleted(amount);
       setDepositAmount('');
       alert(`Deposited ${depositAmount} USDC. Tx: ${result.signature}`);
     } catch (error) {
@@ -51,8 +55,12 @@ export function ShieldedBalance() {
   const handleWithdraw = async () => {
     if (!withdrawAmount || isNaN(Number(withdrawAmount)) || !withdrawToken || !publicKey) return;
     setIsWithdrawing(true);
+    const amount = Number(withdrawAmount);
+    const tokenInfo = balances.find(b => b.token.mint === withdrawToken);
+    analytics.withdrawStarted(tokenInfo?.token.symbol || 'unknown', amount);
     try {
-      const result = await withdraw(withdrawToken, Number(withdrawAmount), publicKey.toBase58());
+      const result = await withdraw(withdrawToken, amount, publicKey.toBase58());
+      analytics.withdrawCompleted(tokenInfo?.token.symbol || 'unknown', amount);
       setWithdrawAmount('');
       setWithdrawToken('');
       setShowWithdraw(false);

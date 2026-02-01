@@ -27,6 +27,7 @@ import {
 } from '@/lib/solana/constants';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo, DCAConfig } from '@/types';
+import { analytics } from '@/lib/analytics';
 
 // Privacy Cash has a minimum withdrawal of ~1 USDC to prevent correlation attacks
 const MIN_AMOUNT_PER_TRADE = 1;
@@ -104,6 +105,7 @@ export function CreateDCAModal() {
       });
 
       if (result) {
+        analytics.dcaCreated(outputToken.symbol, total, frequencyHours);
         setCreateModalOpen(false);
         resetForm();
       } else {
