@@ -129,7 +129,58 @@ function Landing() {
 
       {/* Hero */}
       <section className="relative min-h-[100svh] flex items-center pt-20 sm:pt-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 w-full">
+        {/* Animated orbital rings - centered behind content */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+          {/* Outermost ring */}
+          <div className="absolute w-[700px] h-[700px] sm:w-[900px] sm:h-[900px] rounded-full border border-accent/[0.05] animate-[spin_80s_linear_infinite]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/25" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full bg-accent/15" />
+            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/20" />
+            <div className="absolute top-[15%] right-[15%] w-1 h-1 rounded-full bg-accent/15" />
+          </div>
+          {/* Outer ring */}
+          <div className="absolute w-[550px] h-[550px] sm:w-[750px] sm:h-[750px] rounded-full border border-accent/[0.07] animate-[spin_60s_linear_infinite_reverse]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent/35" />
+            <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/25" />
+            <div className="absolute bottom-[20%] right-[10%] w-1 h-1 rounded-full bg-accent/20" />
+            <div className="absolute top-[25%] left-[15%] w-1 h-1 rounded-full bg-accent/15" />
+          </div>
+          {/* Middle outer ring */}
+          <div className="absolute w-[420px] h-[420px] sm:w-[600px] sm:h-[600px] rounded-full border border-accent/[0.06] animate-[spin_50s_linear_infinite]">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/30" />
+            <div className="absolute top-[30%] right-0 translate-x-1/2 w-1 h-1 rounded-full bg-accent/25" />
+            <div className="absolute bottom-[25%] left-[5%] w-1 h-1 rounded-full bg-accent/20" />
+          </div>
+          {/* Middle ring */}
+          <div className="absolute w-[320px] h-[320px] sm:w-[480px] sm:h-[480px] rounded-full border border-accent/[0.08] animate-[spin_40s_linear_infinite_reverse]">
+            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent/35" />
+            <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/25" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/30" />
+            <div className="absolute bottom-[15%] right-[20%] w-1 h-1 rounded-full bg-accent/20" />
+          </div>
+          {/* Inner middle ring */}
+          <div className="absolute w-[240px] h-[240px] sm:w-[360px] sm:h-[360px] rounded-full border border-accent/[0.07] animate-[spin_35s_linear_infinite]">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/40" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-1 h-1 rounded-full bg-accent/30" />
+            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/25" />
+          </div>
+          {/* Inner ring */}
+          <div className="absolute w-[160px] h-[160px] sm:w-[250px] sm:h-[250px] rounded-full border border-accent/[0.1] animate-[spin_25s_linear_infinite_reverse]">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-2 h-2 rounded-full bg-accent/45" />
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/35" />
+            <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/30" />
+          </div>
+          {/* Core ring */}
+          <div className="absolute w-[100px] h-[100px] sm:w-[150px] sm:h-[150px] rounded-full border border-accent/[0.12] animate-[spin_20s_linear_infinite]">
+            <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-accent/50" />
+            <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent/40" />
+          </div>
+          {/* Center glow */}
+          <div className="absolute w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-accent/[0.08] blur-xl animate-pulse" />
+          <div className="absolute w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-accent/[0.15] blur-md" />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 w-full relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             {/* Minimal badge - just "on Solana" */}
             <div
