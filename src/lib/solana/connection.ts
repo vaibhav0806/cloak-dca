@@ -1,6 +1,10 @@
 import { Connection, clusterApiUrl } from '@solana/web3.js';
 
-const RPC_URL = process.env.NEXT_PUBLIC_HELIUS_RPC_URL || clusterApiUrl('devnet');
+// Helius primary, Quicknode fallback
+const RPC_URL =
+  process.env.NEXT_PUBLIC_HELIUS_RPC_URL ||
+  process.env.NEXT_PUBLIC_QUICKNODE_RPC_URL ||
+  clusterApiUrl('devnet');
 
 let connection: Connection | null = null;
 

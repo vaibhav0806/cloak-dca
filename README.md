@@ -52,7 +52,8 @@ Your Wallet → Privacy Pool → Session Wallet → Jupiter Swap → Session Wal
 - [Privacy.cash](https://privacy.cash) — ZK-proof privacy pool
 - [Light Protocol](https://lightprotocol.com) — ZK compression & cryptography
 - [Jupiter](https://jup.ag) — DEX aggregation
-- [Helius](https://helius.dev) — Solana RPC
+- [Helius](https://helius.dev) — Solana RPC (primary)
+- [Quicknode](https://quicknode.com) — Solana RPC (fallback)
 
 **Frontend & Backend**
 - Next.js 16 + React 19 + TailwindCSS 4
@@ -227,5 +228,6 @@ MIT
   <a href="https://lightprotocol.com">Light Protocol</a> •
   <a href="https://jup.ag">Jupiter</a> •
   <a href="https://helius.dev">Helius</a> •
+  <a href="https://quicknode.com">Quicknode</a> •
   <a href="https://supabase.com">Supabase</a>
 </div>

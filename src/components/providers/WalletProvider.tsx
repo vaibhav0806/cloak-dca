@@ -38,9 +38,13 @@ function WalletConnectionHandler({ children }: { children: React.ReactNode }) {
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  // Use Helius RPC or fallback to devnet
+  // Helius primary, Quicknode fallback
   const endpoint = useMemo(() => {
-    return process.env.NEXT_PUBLIC_HELIUS_RPC_URL || clusterApiUrl('devnet');
+    return (
+      process.env.NEXT_PUBLIC_HELIUS_RPC_URL ||
+      process.env.NEXT_PUBLIC_QUICKNODE_RPC_URL ||
+      clusterApiUrl('devnet')
+    );
   }, []);
 
   const wallets = useMemo(
