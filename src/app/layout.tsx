@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { SupabaseProvider } from "@/components/providers/SupabaseProvider";
@@ -103,6 +104,13 @@ export default function RootLayout({
         <SupabaseProvider>
           <WalletProvider>{children}</WalletProvider>
         </SupabaseProvider>
+        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
+          <Script
+            src="https://cloud.umami.is/script.js"
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            strategy="lazyOnload"
+          />
+        )}
       </body>
     </html>
   );
