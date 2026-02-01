@@ -79,8 +79,7 @@ export const metadata: Metadata = {
     creator: "@usecloak",
   },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
+    icon: "/icon.png",
     apple: "/apple-touch-icon.png",
   },
   manifest: "/site.webmanifest",
