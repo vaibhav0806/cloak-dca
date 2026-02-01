@@ -266,32 +266,33 @@ function Landing() {
 
       {/* Security */}
       <section id="security" className="relative py-16 sm:py-24 lg:py-32 bg-card/30 border-t border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
-            <div>
-              <p className="text-accent text-sm font-medium mb-4">Security</p>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium leading-tight mb-6">
-                Built for the security-conscious
-              </h2>
-              <p className="text-muted-foreground leading-relaxed mb-8 sm:mb-10">
-                <span className="text-foreground">cloak</span><span className="text-accent">.</span> is designed from the ground up with security as the top priority.
-                Your funds remain in your control at all times.
-              </p>
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-8">
+          {/* Centered header */}
+          <div className="text-center mb-12 sm:mb-16 lg:mb-20">
+            <p className="text-accent text-sm font-medium mb-4">Security</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium leading-tight mb-6">
+              Built for the security-conscious
+            </h2>
+            <p className="text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              <span className="text-foreground">cloak</span><span className="text-accent">.</span> is designed from the ground up with security as the top priority.
+              Your funds remain in your control at all times.
+            </p>
+          </div>
 
-              <div className="space-y-6">
-                <SecurityFeature
-                  title="You keep your keys"
-                  description="We can't access your funds. Your wallet signs everything — we just facilitate the trades."
-                />
-                <SecurityFeature
-                  title="Sign once, trade automatically"
-                  description="One signature creates a trading session. Your main wallet stays untouched while DCA runs."
-                />
-                <SecurityFeature
-                  title="Mathematically private"
-                  description="The protocol proves your trade is valid without revealing who you are or what you're trading."
-                />
-              </div>
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
+            <div className="space-y-6">
+              <SecurityFeature
+                title="You keep your keys"
+                description="We can't access your funds. Your wallet signs everything — we just facilitate the trades."
+              />
+              <SecurityFeature
+                title="Sign once, trade automatically"
+                description="One signature creates a trading session. Your main wallet stays untouched while DCA runs."
+              />
+              <SecurityFeature
+                title="Mathematically private"
+                description="The protocol proves your trade is valid without revealing who you are or what you're trading."
+              />
             </div>
 
             {/* Visual element */}
