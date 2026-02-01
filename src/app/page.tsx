@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Shield, Lock, Zap, Eye, EyeOff, Check, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, Check, ArrowRight, Shield } from 'lucide-react';
 
 export default function Home() {
   const { connected, connecting } = useWallet();
@@ -109,20 +109,35 @@ function Landing() {
     <div className="relative overflow-hidden">
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Main gradient glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] sm:w-[1200px] h-[600px] sm:h-[800px] bg-gradient-radial from-accent/[0.08] via-accent/[0.02] to-transparent rounded-full blur-3xl" />
+
+        {/* Animated floating orbs */}
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-float-slow" />
+        <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-accent/3 rounded-full blur-3xl animate-float-slower" />
+        <div className="absolute bottom-1/4 left-1/3 w-32 h-32 bg-accent/5 rounded-full blur-2xl animate-float" />
+
+        {/* Subtle grid */}
+        <div
+          className="absolute inset-0 opacity-[0.015]"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: '60px 60px',
+          }}
+        />
       </div>
 
       {/* Hero */}
       <section className="relative min-h-[100svh] flex items-center pt-20 sm:pt-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 w-full">
           <div className="max-w-4xl mx-auto text-center">
-            {/* Trust badge */}
+            {/* Minimal badge - just "on Solana" */}
             <div
-              className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-border bg-card/50 backdrop-blur-sm mb-8 sm:mb-10"
+              className="inline-flex items-center gap-2 mb-8 sm:mb-10"
               style={{ animation: 'fadeSlideUp 0.7s ease-out forwards', opacity: 0 }}
             >
-              <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-              <span className="text-xs sm:text-sm text-muted-foreground">Private DCA on Solana</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs sm:text-sm text-muted-foreground/70">Live on Solana</span>
             </div>
 
             {/* Headline */}
@@ -144,19 +159,16 @@ function Landing() {
               Your trades, timing, and positions remain completely private.
             </p>
 
-            {/* Trust indicators */}
+            {/* Trust indicators - minimal */}
             <div
-              className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground"
+              className="flex items-center justify-center gap-3 text-xs sm:text-sm text-muted-foreground/50"
               style={{ animation: 'fadeSlideUp 0.7s ease-out 0.3s forwards', opacity: 0 }}
             >
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-accent" />
-                <span>You keep your keys</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-accent" />
-                <span>Fully automated</span>
-              </div>
+              <span>Self-custody</span>
+              <span className="w-1 h-1 rounded-full bg-accent/50" />
+              <span>Automated</span>
+              <span className="w-1 h-1 rounded-full bg-accent/50" />
+              <span>Private</span>
             </div>
           </div>
         </div>
@@ -254,24 +266,6 @@ function Landing() {
 }
 
 // Component helpers
-function ProblemItem({ text }: { text: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500/70 shrink-0" />
-      <p className="text-muted-foreground">{text}</p>
-    </div>
-  );
-}
-
-function SolutionItem({ text }: { text: string }) {
-  return (
-    <div className="flex items-start gap-3">
-      <Check className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-      <p className="text-foreground">{text}</p>
-    </div>
-  );
-}
-
 function ProcessStep({ number, title, description }: {
   number: string;
   title: string;
