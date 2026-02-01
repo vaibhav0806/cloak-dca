@@ -122,7 +122,7 @@ function Landing() {
               style={{ animation: 'fadeSlideUp 0.7s ease-out forwards', opacity: 0 }}
             >
               <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent" />
-              <span className="text-xs sm:text-sm text-muted-foreground">Zero-Knowledge DCA on Solana</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">Private DCA on Solana</span>
             </div>
 
             {/* Headline */}
@@ -151,11 +151,11 @@ function Landing() {
             >
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-accent" />
-                <span>Non-custodial</span>
+                <span>You keep your keys</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="h-4 w-4 text-accent" />
-                <span>Session keys</span>
+                <span>Fully automated</span>
               </div>
             </div>
           </div>
@@ -186,19 +186,16 @@ function Landing() {
               number="01"
               title="Deposit"
               description="Transfer USDC to your shielded balance. Your deposit becomes an encrypted commitment—the link to your wallet is cryptographically severed."
-              icon={<Lock className="h-5 w-5 sm:h-6 sm:w-6" />}
             />
             <ProcessStep
               number="02"
               title="Configure"
               description="Set your strategy: target token, amount per trade, frequency. Sign once to authorize the protocol to execute on your behalf."
-              icon={<Zap className="h-5 w-5 sm:h-6 sm:w-6" />}
             />
             <ProcessStep
               number="03"
               title="Accumulate"
               description="Trades execute automatically through the privacy pool. Your wallet never interacts with DEXs—complete anonymity, best prices."
-              icon={<Shield className="h-5 w-5 sm:h-6 sm:w-6" />}
             />
           </div>
         </div>
@@ -214,22 +211,22 @@ function Landing() {
                 Built for the security-conscious
               </h2>
               <p className="text-muted-foreground leading-relaxed mb-8 sm:mb-10">
-                <span className="text-accent">cloak</span> is designed from the ground up with security as the top priority.
+                <span className="text-foreground">cloak</span><span className="text-accent">.</span> is designed from the ground up with security as the top priority.
                 Your funds remain in your control at all times.
               </p>
 
               <div className="space-y-6">
                 <SecurityFeature
-                  title="Non-custodial"
-                  description="Your keys, your crypto. We never have access to your funds."
+                  title="You keep your keys"
+                  description="We can't access your funds. Your wallet signs everything — we just facilitate the trades."
                 />
                 <SecurityFeature
-                  title="Session keys"
-                  description="Deterministic keypairs authorize trades without exposing your primary wallet."
+                  title="Sign once, trade automatically"
+                  description="One signature creates a trading session. Your main wallet stays untouched while DCA runs."
                 />
                 <SecurityFeature
-                  title="Zero-knowledge proofs"
-                  description="Cryptographic proofs verify transactions without revealing sensitive data."
+                  title="Mathematically private"
+                  description="The protocol proves your trade is valid without revealing who you are or what you're trading."
                 />
               </div>
             </div>
@@ -275,19 +272,16 @@ function SolutionItem({ text }: { text: string }) {
   );
 }
 
-function ProcessStep({ number, title, description, icon }: {
+function ProcessStep({ number, title, description }: {
   number: string;
   title: string;
   description: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
 }) {
   return (
     <div className="group relative p-6 sm:p-8 rounded-2xl border border-border bg-card/50 hover:bg-card hover:border-accent/20 transition-all duration-300">
-      <div className="flex items-center gap-4 mb-4 sm:mb-6">
-        <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/10 text-accent group-hover:bg-accent/20 transition-colors">
-          {icon}
-        </div>
-        <span className="text-3xl sm:text-4xl font-light text-muted-foreground/30">{number}</span>
+      <div className="mb-6 sm:mb-8">
+        <span className="text-5xl sm:text-6xl font-extralight text-muted-foreground/20 group-hover:text-accent/30 transition-colors">{number}</span>
       </div>
       <h3 className="text-lg sm:text-xl font-medium mb-2 sm:mb-3">{title}</h3>
       <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{description}</p>
@@ -342,7 +336,7 @@ function ComparisonSection() {
         <div className={`text-center mb-12 sm:mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <p className="text-accent text-sm font-medium mb-4">Why privacy matters</p>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-medium">
-            See the difference <span className="text-accent">cloak</span> makes
+            See the difference cloak<span className="text-accent">.</span> makes
           </h2>
         </div>
 
@@ -350,84 +344,98 @@ function ComparisonSection() {
         <div className="grid lg:grid-cols-2 gap-4 lg:gap-6 relative">
           {/* Center arrow - desktop */}
           <div className={`hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 transition-all duration-500 delay-500 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
-            <div className="w-12 h-12 rounded-full bg-background border-2 border-accent/50 flex items-center justify-center shadow-[0_0_20px_rgba(255,99,71,0.2)]">
-              <ArrowRight className="w-5 h-5 text-accent" />
+            <div className="w-12 h-12 rounded-full bg-background border-2 border-emerald-500/50 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+              <ArrowRight className="w-5 h-5 text-emerald-400" />
             </div>
           </div>
 
-          {/* Problem - Left side */}
+          {/* Problem - Left side (Bad - exposed, vulnerable) */}
           <div className={`transition-all duration-700 delay-100 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'}`}>
-            <div className="h-full p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-red-500/[0.08] to-red-500/[0.02] border border-red-500/20">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 rounded-xl bg-red-500/15 flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-red-400" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-red-400 uppercase tracking-wider">Without privacy</p>
-                  <p className="text-lg font-medium">Public by default</p>
-                </div>
-              </div>
+            <div className="h-full p-6 sm:p-8 rounded-2xl bg-zinc-900/50 border border-dashed border-zinc-700/50 relative overflow-hidden">
+              {/* Subtle danger gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-red-950/20 to-transparent pointer-events-none" />
 
-              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
-              </p>
-
-              <div className="space-y-3">
-                {['Wallet balances exposed', 'DCA timing visible to bots', 'Full history trackable'].map((text, i) => (
-                  <div
-                    key={text}
-                    className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
-                    style={{ transitionDelay: `${300 + i * 100}ms` }}
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                    <p className="text-muted-foreground text-sm">{text}</p>
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-11 h-11 rounded-xl bg-zinc-800 border border-zinc-700/50 flex items-center justify-center">
+                    <Eye className="w-5 h-5 text-zinc-500" />
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">Without privacy</p>
+                    <p className="text-lg font-medium text-zinc-300">Public by default</p>
+                  </div>
+                </div>
 
-              <div className="mt-6 pt-5 border-t border-red-500/10">
-                <div className="flex items-center gap-2 text-sm text-red-400/80">
-                  <Eye className="w-4 h-4" />
-                  <span>Anyone can watch your moves</span>
+                <p className="text-zinc-500 text-sm leading-relaxed mb-6">
+                  Every trade you make on-chain is visible. Watchers can see your patterns and front-run your orders.
+                </p>
+
+                <div className="space-y-3">
+                  {['Wallet balances exposed', 'DCA timing visible to bots', 'Full history trackable'].map((text, i) => (
+                    <div
+                      key={text}
+                      className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}
+                      style={{ transitionDelay: `${300 + i * 100}ms` }}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-red-500/30 flex items-center justify-center shrink-0">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-500/50" />
+                      </div>
+                      <p className="text-zinc-500 text-sm">{text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 pt-5 border-t border-zinc-800">
+                  <div className="flex items-center gap-2 text-sm text-red-400/60">
+                    <Eye className="w-4 h-4" />
+                    <span>Anyone can watch your moves</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Solution - Right side */}
+          {/* Solution - Right side (Good - protected, premium) */}
           <div className={`transition-all duration-700 delay-300 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
-            <div className="h-full p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-accent/[0.1] to-accent/[0.03] border border-accent/25">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center">
-                  <EyeOff className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-semibold text-accent uppercase tracking-wider">With cloak</p>
-                  <p className="text-lg font-medium">Invisible by design</p>
-                </div>
-              </div>
+            <div className="h-full p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-emerald-950/30 to-emerald-950/5 border border-emerald-500/25 relative overflow-hidden shadow-[0_0_40px_-10px_rgba(16,185,129,0.15)]">
+              {/* Subtle glow effect */}
+              <div className="absolute -top-20 -right-20 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <p className="text-muted-foreground text-sm leading-relaxed mb-6">
-                Zero-knowledge proofs break the link between your wallet and trades. No one can trace your activity.
-              </p>
-
-              <div className="space-y-3">
-                {['Shielded balances', 'Private execution', 'Unlinkable transactions'].map((text, i) => (
-                  <div
-                    key={text}
-                    className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
-                    style={{ transitionDelay: `${500 + i * 100}ms` }}
-                  >
-                    <Check className="w-4 h-4 text-accent shrink-0" />
-                    <p className="text-foreground text-sm">{text}</p>
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center">
+                    <EyeOff className="w-5 h-5 text-emerald-400" />
                   </div>
-                ))}
-              </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">With cloak</p>
+                    <p className="text-lg font-medium">Invisible by design</p>
+                  </div>
+                </div>
 
-              <div className="mt-6 pt-5 border-t border-accent/10">
-                <div className="flex items-center gap-2 text-sm text-accent">
-                  <EyeOff className="w-4 h-4" />
-                  <span>Your identity stays private</span>
+                <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+                  Zero-knowledge proofs break the link between your wallet and trades. No one can trace your activity.
+                </p>
+
+                <div className="space-y-3">
+                  {['Shielded balances', 'Private execution', 'Unlinkable transactions'].map((text, i) => (
+                    <div
+                      key={text}
+                      className={`flex items-center gap-3 transition-all duration-500 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
+                      style={{ transitionDelay: `${500 + i * 100}ms` }}
+                    >
+                      <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                        <Check className="w-3 h-3 text-emerald-400" />
+                      </div>
+                      <p className="text-foreground text-sm">{text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 pt-5 border-t border-emerald-500/15">
+                  <div className="flex items-center gap-2 text-sm text-emerald-400">
+                    <EyeOff className="w-4 h-4" />
+                    <span>Your identity stays private</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -436,8 +444,8 @@ function ComparisonSection() {
 
         {/* Mobile arrow */}
         <div className={`lg:hidden flex justify-center my-4 transition-all duration-500 delay-200 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-          <div className="w-10 h-10 rounded-full bg-background border border-accent/50 flex items-center justify-center rotate-90">
-            <ArrowRight className="w-4 h-4 text-accent" />
+          <div className="w-10 h-10 rounded-full bg-background border border-emerald-500/50 flex items-center justify-center rotate-90">
+            <ArrowRight className="w-4 h-4 text-emerald-400" />
           </div>
         </div>
       </div>
