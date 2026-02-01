@@ -1,51 +1,66 @@
-# Cloak - Private Dollar Cost Averaging on Solana
+<div align="center">
+  <img src="public/og-image.png" alt="Cloak - Private DCA on Solana" width="600" />
 
-**Website:** [usecloak.xyz](https://usecloak.xyz)
+  <h1>cloak.</h1>
+  <p><strong>The private way to accumulate crypto</strong></p>
 
-Cloak is a privacy-preserving DCA (Dollar Cost Averaging) application built on Solana. It allows you to accumulate crypto without revealing your trading strategy on-chain.
+  <a href="https://usecloak.xyz">Website</a> •
+  <a href="#how-it-works">How It Works</a> •
+  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#getting-started">Get Started</a>
 
-## The Problem
+  ---
+</div>
 
-Traditional DCA on Solana is fully transparent:
-- Everyone can see your wallet address
-- Your buy schedule is visible
-- Your accumulation strategy is public
-- Others can front-run or copy your trades
+Cloak is a privacy-preserving DCA (Dollar Cost Averaging) application built on Solana. Accumulate SOL, cbBTC, and ZEC without revealing your trading strategy on-chain.
 
-## The Solution
+## 🔍 The Problem
+
+Traditional DCA on Solana is **fully transparent**:
+
+| What's Exposed | Risk |
+|----------------|------|
+| Your wallet address | Anyone can track you |
+| Buy schedule | Predictable patterns |
+| Accumulation strategy | Front-running & copy trading |
+| Transaction history | Permanent public record |
+
+## 🛡️ The Solution
 
 Cloak breaks the on-chain link between you and your trades:
 
 ```
-Your Wallet → Privacy Pool → Session Wallet → Jupiter Swap → Privacy Pool → Your Wallet
-                   ↑                                              ↑
-            (unlinkable)                                    (unlinkable)
+Your Wallet → Privacy Pool → Session Wallet → Jupiter Swap → Session Wallet → Any Wallet
+                   ↑              ↑                                              ↑
+            (ZK shielded)   (unlinkable)                                  (your choice)
 ```
 
-Nobody can connect your deposits to your withdrawals or prove that you're running a DCA strategy.
+**Nobody can connect your deposits to your DCA trades or prove that you're running a strategy.**
 
-## How It Works
+## ⚡ How It Works
 
-1. **Deposit** - Shield your USDC into a privacy pool (shared with thousands of others)
-2. **Configure DCA** - Set your target token, amount per trade, and frequency
-3. **Automatic Execution** - A keeper executes your trades on schedule via Jupiter
-4. **Withdraw** - Unshield your accumulated tokens to any wallet
+| Step | Action | What Happens |
+|------|--------|--------------|
+| 1️⃣ | **Deposit** | Shield your USDC into a privacy pool (mixed with others) |
+| 2️⃣ | **Configure** | Set target token, amount per trade, and frequency |
+| 3️⃣ | **Sit Back** | Keeper executes your trades on schedule via Jupiter |
+| 4️⃣ | **Withdraw** | Send accumulated tokens to any wallet
 
-## Tech Stack
+## 🧱 Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 16, React, TailwindCSS, shadcn/ui |
-| State | Zustand |
-| Wallet | Solana Wallet Adapter (Phantom, Solflare) |
-| Database | Supabase (Postgres) |
-| Privacy | Privacy.cash SDK (ZK proofs) |
-| DEX | Jupiter Aggregator |
-| Blockchain | Solana |
-| Cron | Vercel Cron |
-| RPC | Helius |
+**Privacy & Blockchain**
+- [Privacy.cash](https://privacy.cash) — ZK-proof privacy pool
+- [Light Protocol](https://lightprotocol.com) — ZK compression & cryptography
+- [Jupiter](https://jup.ag) — DEX aggregation
+- [Helius](https://helius.dev) — Solana RPC
 
-## Architecture
+**Frontend & Backend**
+- Next.js 16 + React 19 + TailwindCSS 4
+- Zustand (state management)
+- Supabase (database)
+- Railway (hosting)
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
@@ -54,20 +69,21 @@ Nobody can connect your deposits to your withdrawals or prove that you're runnin
 └─────────────────┘     └─────────────────┘     └─────────────────┘
                                │
                                ▼
-              ┌────────────────────────────────┐
-              │         Solana Blockchain       │
-              │  ┌──────────┐  ┌──────────┐    │
-              │  │ Privacy  │  │ Jupiter  │    │
-              │  │  .cash   │  │   DEX    │    │
-              │  └──────────┘  └──────────┘    │
-              └────────────────────────────────┘
+              ┌────────────────────────────────────────┐
+              │           Solana Blockchain            │
+              │                                        │
+              │   Privacy.cash ──► Light Protocol      │
+              │        │                               │
+              │        └──────► Jupiter DEX            │
+              │                                        │
+              └────────────────────────────────────────┘
 ```
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - A Solana wallet (Phantom or Solflare)
 - Supabase account
 - Helius RPC API key (recommended)
@@ -76,8 +92,8 @@ Nobody can connect your deposits to your withdrawals or prove that you're runnin
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/cloak.git
-cd cloak
+git clone https://github.com/vaibhav0806/cloak-dca.git
+cd cloak-dca
 
 # Install dependencies
 npm install
@@ -128,21 +144,25 @@ Open [http://localhost:3000](http://localhost:3000).
 curl -H "Authorization: Bearer your_cron_secret" http://localhost:3000/api/keeper/execute
 ```
 
-## Deployment
+## 🌐 Deployment
 
-### Vercel (Recommended)
+### Railway (Recommended)
+
+1. Connect your GitHub repo to Railway
+2. Set environment variables in Railway dashboard
+3. Deploy
+
+### Vercel (Alternative)
 
 ```bash
 vercel deploy --prod
 ```
 
-The cron job is configured in `vercel.json` to run every 15 minutes.
+### Environment Variables
 
-### Environment Variables on Vercel
+Set all variables from `.env.local` in your hosting provider's dashboard.
 
-Set all variables from `.env.local` in Vercel's dashboard.
-
-## API Endpoints
+## 📡 API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -156,52 +176,56 @@ Set all variables from `.env.local` in Vercel's dashboard.
 | `/api/privacy/withdraw` | POST | Withdraw from privacy pool |
 | `/api/keeper/execute` | GET | Execute due DCAs (cron) |
 
-## Privacy Model
+## 🔐 Privacy Model
 
-| Data | On-Chain Visible? |
-|------|-------------------|
-| Deposit to privacy pool | Yes |
-| Which UTXO is yours | No |
-| Session wallet swaps | Yes |
-| Link: Your wallet ↔ Session wallet | No |
-| DCA schedule/amounts | No |
-| Link: Deposit ↔ Withdrawal | No |
+| Data | Visible? | |
+|------|----------|---|
+| Deposit to privacy pool | ✅ Yes | Public deposit, but mixed with others |
+| Which UTXO is yours | ❌ No | ZK proofs hide ownership |
+| Session wallet swaps | ✅ Yes | Visible but unlinked to you |
+| Link: Your wallet ↔ Session | ❌ No | **Broken by privacy pool** |
+| DCA schedule/amounts | ❌ No | Stored encrypted off-chain |
+| Link: Deposit ↔ Withdrawal | ❌ No | **Unlinkable** |
 
-## Fees
+## 💰 Fees
 
-- **Privacy.cash Protocol Fee**: ~70-80% of withdrawal (for relayer + ZK verification)
-- **Jupiter Swap Fee**: ~0.1-0.5% (standard DEX fees)
-- **Solana Transaction Fee**: ~0.000005 SOL per transaction
+| Fee | Amount |
+|-----|--------|
+| Privacy.cash Protocol | ~70-80% of withdrawal |
+| Jupiter Swap | ~0.1-0.5% |
+| Solana Transaction | ~0.000005 SOL |
 
-## Limitations
+## ⚠️ Limitations
 
-- Minimum DCA frequency: 15 minutes (Vercel cron limit)
+- Minimum DCA frequency: 15 minutes
 - Privacy.cash fees can be significant for small amounts
-- Session keypair stored as base64 (not encrypted) - for hackathon demo only
+- Session keypair stored as base64 (not encrypted) — hackathon demo only
+- Output tokens are not re-shielded (visible in session wallet, but unlinked to you)
 
-## Security Considerations
+## 🔒 Security Notes
 
-For production use:
+For production:
 - Encrypt session keypairs before storing
 - Add rate limiting to API endpoints
-- Implement proper error recovery for failed re-shielding
+- Implement error recovery for failed transactions
 - Add monitoring and alerts for keeper failures
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome! Please open an issue or PR.
+Contributions welcome! Open an issue or PR.
 
-## License
+## 📄 License
 
 MIT
 
-## Acknowledgments
-
-- [Privacy.cash](https://privacy.cash) - Privacy pool infrastructure
-- [Jupiter](https://jup.ag) - DEX aggregation
-- [Helius](https://helius.dev) - Solana RPC
-- [Supabase](https://supabase.com) - Database
-
 ---
 
-Built for the Privacy.cash Hackathon
+<div align="center">
+  <strong>Built with privacy in mind</strong>
+  <br /><br />
+  <a href="https://privacy.cash">Privacy.cash</a> •
+  <a href="https://lightprotocol.com">Light Protocol</a> •
+  <a href="https://jup.ag">Jupiter</a> •
+  <a href="https://helius.dev">Helius</a> •
+  <a href="https://supabase.com">Supabase</a>
+</div>
