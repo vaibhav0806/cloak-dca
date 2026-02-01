@@ -19,11 +19,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://usecloak.xyz"),
   title: {
-    default: "Cloak — Private DCA on Solana",
+    default: "Cloak — Private DCA on Solana | Accumulate Wealth Quietly",
     template: "%s | Cloak",
   },
   description:
-    "Accumulate wealth quietly. Privacy-preserving dollar cost averaging on Solana. Shield your trading activity and DCA into SOL, BTC, and ZEC privately.",
+    "Privacy-preserving dollar cost averaging on Solana. Shield your trading activity and DCA into SOL, BTC, and ZEC privately. Automated, secure, and completely anonymous.",
   keywords: [
     "Solana",
     "DCA",
@@ -58,9 +58,9 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://usecloak.xyz",
     siteName: "Cloak",
-    title: "Cloak — Private DCA on Solana",
+    title: "Cloak — Private DCA on Solana | Accumulate Wealth Quietly",
     description:
-      "Accumulate wealth quietly. Privacy-preserving dollar cost averaging on Solana.",
+      "Privacy-preserving dollar cost averaging on Solana. Shield your trading activity and DCA into SOL, BTC, and ZEC privately. Automated, secure, and anonymous.",
     images: [
       {
         url: "/og-image.png",
@@ -72,9 +72,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cloak — Private DCA on Solana",
+    title: "Cloak — Private DCA on Solana | Accumulate Wealth Quietly",
     description:
-      "Accumulate wealth quietly. Privacy-preserving dollar cost averaging on Solana.",
+      "Privacy-preserving dollar cost averaging on Solana. Shield your trading activity and DCA into SOL, BTC, and ZEC privately. Automated, secure, and anonymous.",
     images: ["/og-image.png"],
     creator: "@usecloak",
   },
