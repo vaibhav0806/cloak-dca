@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { isBetaApproved } from '@/lib/beta';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Wallet address required' },
         { status: 401 }
+      );
+    }
+
+    if (!(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerPrivacyClient, getTokenBalance } from '@/lib/privacy/server';
+import { isBetaApproved } from '@/lib/beta';
 import { SUPPORTED_INPUT_TOKENS } from '@/lib/solana/constants';
 import type { ShieldedBalance } from '@/types';
 
@@ -12,6 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Session keypair required' },
         { status: 400 }
+      );
+    }
+
+    const walletAddress = request.headers.get('x-wallet-address');
+    if (walletAddress && !(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 

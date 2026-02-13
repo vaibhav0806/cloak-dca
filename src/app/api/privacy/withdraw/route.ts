@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerPrivacyClient } from '@/lib/privacy/server';
+import { isBetaApproved } from '@/lib/beta';
 import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 
 export async function POST(request: NextRequest) {
@@ -11,6 +12,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Session keypair required' },
         { status: 400 }
+      );
+    }
+
+    const walletAddress = request.headers.get('x-wallet-address');
+    if (walletAddress && !(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 

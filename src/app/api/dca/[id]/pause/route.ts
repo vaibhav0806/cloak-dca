@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
+import { isBetaApproved } from '@/lib/beta';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,6 +16,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Wallet address required' },
         { status: 401 }
+      );
+    }
+
+    if (!(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 
@@ -88,6 +96,13 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { error: 'Wallet address required' },
         { status: 401 }
+      );
+    }
+
+    if (!(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 
