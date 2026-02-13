@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store';
-import { Shield } from 'lucide-react';
 
 const CODE_LENGTH = 6;
 
@@ -88,15 +87,8 @@ export function BetaGate() {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4">
+    <div className="min-h-[calc(100svh-5rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-md text-center">
-        {/* Icon */}
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full border border-accent/20 bg-card/50 flex items-center justify-center">
-            <Shield className="w-8 h-8 text-accent/80" />
-          </div>
-        </div>
-
         {/* Title */}
         <h2 className="text-2xl font-medium mb-2">Private Beta</h2>
         <p className="text-sm text-muted-foreground mb-8">
