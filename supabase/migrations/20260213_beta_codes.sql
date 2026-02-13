@@ -1,15 +1,17 @@
 -- Beta invite code system
--- Each code is a unique 6-char alphanumeric string, single-use per wallet
+-- Each code is generated for a specific wallet address
 
 -- Beta codes table
 CREATE TABLE beta_codes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     code TEXT UNIQUE NOT NULL,
-    used_by TEXT,  -- wallet address that redeemed this code (NULL = available)
+    wallet_address TEXT NOT NULL,  -- the wallet this code was generated for
+    redeemed BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_beta_codes_code ON beta_codes(code);
+CREATE INDEX idx_beta_codes_wallet ON beta_codes(wallet_address);
 
 ALTER TABLE beta_codes ENABLE ROW LEVEL SECURITY;
 

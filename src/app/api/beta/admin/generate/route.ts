@@ -13,8 +13,9 @@ function generateCode(): string {
 }
 
 /**
- * POST /api/beta/admin/generate - Generate beta invite codes
+ * POST /api/beta/admin/generate - Generate a beta invite code for a specific wallet
  * Secured by BETA_ADMIN_SECRET header
+ * Body: { walletAddress: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,42 +30,63 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const count = Math.min(Math.max(body.count || 1, 1), 50); // 1-50 codes at a time
+    const { walletAddress } = body;
+
+    if (!walletAddress) {
+      return NextResponse.json(
+        { error: 'walletAddress is required' },
+        { status: 400 }
+      );
+    }
 
     const supabase = createServiceClient();
-    const codes: string[] = [];
 
-    for (let i = 0; i < count; i++) {
-      let code: string;
-      let attempts = 0;
+    // Check if a code already exists for this wallet
+    const { data: existing } = await supabase
+      .from('beta_codes')
+      .select('code, redeemed')
+      .eq('wallet_address', walletAddress)
+      .single();
 
-      // Retry to ensure uniqueness
-      do {
-        code = generateCode();
-        attempts++;
-      } while (codes.includes(code) && attempts < 10);
+    if (existing) {
+      return NextResponse.json({
+        code: existing.code,
+        walletAddress,
+        alreadyExists: true,
+        redeemed: existing.redeemed,
+      });
+    }
+
+    // Generate a unique code
+    let code: string;
+    let attempts = 0;
+
+    do {
+      code = generateCode();
+      attempts++;
 
       const { error } = await supabase
         .from('beta_codes')
-        .insert({ code });
+        .insert({ code, wallet_address: walletAddress });
 
-      if (error) {
-        // If duplicate (unlikely), try again
-        if (error.code === '23505') {
-          i--;
-          continue;
-        }
+      if (!error) {
+        return NextResponse.json({ code, walletAddress });
+      }
+
+      // If duplicate code (unlikely), retry
+      if (error.code !== '23505') {
         console.error('Error inserting beta code:', error);
         return NextResponse.json(
-          { error: 'Failed to generate codes' },
+          { error: 'Failed to generate code' },
           { status: 500 }
         );
       }
+    } while (attempts < 10);
 
-      codes.push(code);
-    }
-
-    return NextResponse.json({ codes });
+    return NextResponse.json(
+      { error: 'Failed to generate unique code after multiple attempts' },
+      { status: 500 }
+    );
   } catch (error) {
     console.error('Beta admin generate error:', error);
     return NextResponse.json(

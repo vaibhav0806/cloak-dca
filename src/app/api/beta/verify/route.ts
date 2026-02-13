@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase/server';
 
 /**
  * POST /api/beta/verify - Redeem a beta invite code
+ * The code must have been generated for the wallet trying to redeem it.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -19,10 +20,10 @@ export async function POST(request: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Check if the code exists and is unused
+    // Look up the code and verify it belongs to this wallet
     const { data: betaCode, error: fetchError } = await supabase
       .from('beta_codes')
-      .select('id, code, used_by')
+      .select('id, code, wallet_address, redeemed')
       .eq('code', normalizedCode)
       .single();
 
@@ -33,17 +34,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (betaCode.used_by) {
+    if (betaCode.wallet_address !== walletAddress) {
       return NextResponse.json(
-        { error: 'This code has already been used' },
+        { error: 'This code is not valid for your wallet' },
         { status: 400 }
       );
     }
 
-    // Mark the code as used
+    if (betaCode.redeemed) {
+      return NextResponse.json(
+        { error: 'This code has already been redeemed' },
+        { status: 400 }
+      );
+    }
+
+    // Mark the code as redeemed
     const { error: updateCodeError } = await supabase
       .from('beta_codes')
-      .update({ used_by: walletAddress })
+      .update({ redeemed: true })
       .eq('id', betaCode.id);
 
     if (updateCodeError) {
