@@ -14,18 +14,10 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const isBetaApproved = useAppStore((state) => state.isBetaApproved);
   const isCheckingBeta = useAppStore((state) => state.isCheckingBeta);
-  const checkBetaStatus = useAppStore((state) => state.checkBetaStatus);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Check beta status when wallet connects
-  useEffect(() => {
-    if (connected && mounted) {
-      checkBetaStatus();
-    }
-  }, [connected, mounted, checkBetaStatus]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
