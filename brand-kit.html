@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cloak. — Brand Kit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #000000;
+      --fg: #ffffff;
+      --card: #0a0a0a;
+      --secondary: #141414;
+      --muted: #1a1a1a;
+      --muted-fg: #737373;
+      --accent: #ff6347;
+      --border: #262626;
+      --destructive: #ef4444;
+      --success: #22c55e;
+    }
+
+    html { background: var(--bg); color: var(--fg); }
+    body {
+      font-family: 'Manrope', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      letter-spacing: -0.01em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection { background: var(--accent); color: #000; }
+
+    .page { max-width: 960px; margin: 0 auto; padding: 80px 40px 120px; }
+
+    /* ---- HEADER ---- */
+    .kit-header {
+      text-align: center;
+      padding: 80px 0 100px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 80px;
+    }
+    .kit-header .logo-mark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-bottom: 24px;
+    }
+    .kit-header .logo-text {
+      font-size: 72px;
+      font-weight: 300;
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+    .kit-header .logo-dot {
+      color: var(--accent);
+    }
+    .kit-header .subtitle {
+      font-size: 15px;
+      color: var(--muted-fg);
+      margin-top: 16px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      font-weight: 600;
+      font-size: 11px;
+    }
+    .kit-header .version {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted-fg);
+      margin-top: 12px;
+      opacity: 0.5;
+    }
+
+    /* ---- SECTIONS ---- */
+    section { margin-bottom: 80px; }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 24px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-desc {
+      color: var(--muted-fg);
+      font-size: 15px;
+      max-width: 560px;
+      margin-bottom: 40px;
+    }
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 80px 0;
+    }
+
+    /* ---- LOGO SECTION ---- */
+    .logo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .logo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      position: relative;
+    }
+    .logo-card.full {
+      grid-column: 1 / -1;
+      min-height: 280px;
+    }
+    .logo-card.light {
+      background: #ffffff;
+    }
+    .logo-card .card-label {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+    }
+    .logo-card.light .card-label { color: #737373; }
+
+    .wordmark {
+      font-family: 'Manrope', sans-serif;
+      font-size: 48px;
+      font-weight: 300;
+      letter-spacing: -0.04em;
+      color: var(--fg);
+    }
+    .wordmark .dot { color: var(--accent); }
+    .wordmark-dark { color: #000; }
+    .wordmark-dark .dot { color: var(--accent); }
+
+    .icon-preview {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+    }
+    .icon-preview-sm {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+    }
+
+    .logo-usage-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+      margin-top: 40px;
+    }
+    .usage-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+      text-align: center;
+    }
+    .usage-card .usage-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 16px;
+    }
+    .usage-card .usage-detail {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted-fg);
+      margin-top: 12px;
+    }
+
+    /* ---- ICON SECTION ---- */
+    .icon-row {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      margin-top: 32px;
+    }
+    .icon-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .icon-box .icon-size {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+
+    /* ---- COLOR PALETTE ---- */
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .color-grid.secondary {
+      grid-template-columns: repeat(5, 1fr);
+      margin-top: 24px;
+    }
+    .color-swatch {
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .color-swatch .swatch-color {
+      height: 100px;
+    }
+    .color-swatch.small .swatch-color {
+      height: 64px;
+    }
+    .color-swatch .swatch-info {
+      background: var(--card);
+      padding: 12px 14px;
+    }
+    .color-swatch .swatch-name {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .color-swatch .swatch-hex {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted-fg);
+    }
+
+    /* ---- TYPOGRAPHY ---- */
+    .type-scale-wrap {
+      margin-top: 0;
+    }
+    .type-block {
+      display: flex;
+      align-items: flex-start;
+      padding: 24px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .type-block:last-child { border: none; }
+    .type-meta {
+      width: 200px;
+      flex-shrink: 0;
+    }
+    .type-meta .type-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 6px;
+    }
+    .type-meta .type-spec {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted-fg);
+      opacity: 0.6;
+      line-height: 1.6;
+    }
+    .type-sample { padding-left: 40px; flex: 1; }
+
+    .sample-display {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 300;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+    .sample-headline {
+      font-size: 1.5rem;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .sample-title {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      line-height: 1.4;
+      letter-spacing: -0.01em;
+    }
+    .sample-body {
+      font-size: 0.9375rem;
+      font-weight: 400;
+      line-height: 1.6;
+      color: var(--muted-fg);
+    }
+    .sample-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+    }
+    .sample-mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.875rem;
+      letter-spacing: -0.02em;
+    }
+    .sample-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 2rem;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+
+    /* ---- FONT CARDS ---- */
+    .font-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 48px;
+    }
+    .font-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+    }
+    .font-card .font-name {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 16px;
+    }
+    .font-card .font-preview {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+    .font-card .font-preview.mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+    }
+    .font-card .font-usage {
+      font-size: 12px;
+      color: var(--muted-fg);
+      line-height: 1.6;
+    }
+
+    /* ---- COMPONENTS ---- */
+    .component-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .component-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 32px;
+    }
+    .component-card .comp-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 20px;
+    }
+    .comp-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .comp-row + .comp-row { margin-top: 16px; }
+
+    /* Demo buttons */
+    .demo-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Manrope', sans-serif;
+    }
+    .demo-btn.primary { background: #fff; color: #000; }
+    .demo-btn.accent-btn { background: var(--accent); color: #000; }
+    .demo-btn.ghost {
+      background: transparent;
+      color: var(--muted-fg);
+      border: 1px solid var(--border);
+    }
+
+    /* Demo badges */
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: 2px;
+      font-family: 'Manrope', sans-serif;
+    }
+    .demo-badge.default { background: var(--muted); color: var(--fg); }
+    .demo-badge.success { background: rgba(34,197,94,0.15); color: var(--success); }
+    .demo-badge.warning { background: rgba(255,99,71,0.15); color: var(--accent); }
+    .demo-badge.error { background: rgba(239,68,68,0.15); color: var(--destructive); }
+
+    /* Demo status dots */
+    .demo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .demo-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .demo-dot.paused { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .demo-dot.inactive { background: var(--muted-fg); }
+
+    .status-label {
+      font-size: 12px;
+      color: var(--muted-fg);
+      margin-left: 4px;
+    }
+
+    /* Radius demos */
+    .radius-demo {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .radius-box {
+      width: 60px;
+      height: 60px;
+      background: var(--secondary);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--muted-fg);
+    }
+
+    /* Glow demos */
+    .glow-row {
+      display: flex;
+      gap: 24px;
+      margin-top: 16px;
+    }
+    .glow-box {
+      width: 120px;
+      height: 80px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .glow-box .glow-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+    }
+    .glow-standard { box-shadow: 0 0 20px rgba(255, 99, 71, 0.3); }
+    .glow-subtle-demo { box-shadow: 0 0 40px rgba(255, 99, 71, 0.1); }
+    .glow-border { border-color: var(--accent); box-shadow: 0 0 20px rgba(255, 99, 71, 0.15); }
+
+    /* ---- SPACING / TOKENS ---- */
+    .token-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .token-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px;
+    }
+    .token-card .token-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-fg);
+      margin-bottom: 16px;
+    }
+    .token-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .token-item:last-child { border: none; }
+    .token-item .token-key {
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .token-item .token-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--muted-fg);
+    }
+
+    /* ---- DO / DONT ---- */
+    .rules-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .rule-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .rule-card .rule-header {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .rule-card .rule-header.do { background: rgba(34,197,94,0.1); color: var(--success); }
+    .rule-card .rule-header.dont { background: rgba(239,68,68,0.1); color: var(--destructive); }
+    .rule-card .rule-body {
+      padding: 24px;
+      background: var(--card);
+    }
+    .rule-card .rule-body ul {
+      list-style: none;
+      padding: 0;
+    }
+    .rule-card .rule-body li {
+      padding: 6px 0;
+      font-size: 13px;
+      color: var(--muted-fg);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .rule-card .rule-body li::before {
+      content: '—';
+      color: var(--muted-fg);
+      opacity: 0.4;
+    }
+
+    /* ---- DOWNLOADS ---- */
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .download-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 24px;
+      text-align: center;
+    }
+    .download-card .dl-name {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .download-card .dl-detail {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted-fg);
+    }
+
+    /* ---- FOOTER ---- */
+    .kit-footer {
+      text-align: center;
+      padding: 60px 0 0;
+      border-top: 1px solid var(--border);
+      margin-top: 80px;
+    }
+    .kit-footer .footer-brand {
+      font-size: 24px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+    }
+    .kit-footer .footer-brand .dot { color: var(--accent); }
+    .kit-footer .footer-links {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted-fg);
+    }
+    .kit-footer .footer-links a {
+      color: var(--muted-fg);
+      text-decoration: none;
+    }
+    .kit-footer .footer-links a:hover { color: var(--fg); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .page { padding: 40px 20px 80px; }
+      .logo-grid, .font-cards, .component-grid, .rules-grid, .token-grid { grid-template-columns: 1fr; }
+      .color-grid { grid-template-columns: repeat(2, 1fr); }
+      .color-grid.secondary { grid-template-columns: repeat(3, 1fr); }
+      .logo-usage-grid { grid-template-columns: 1fr; }
+      .download-grid { grid-template-columns: 1fr; }
+      .type-meta { width: 140px; }
+      .type-sample { padding-left: 16px; }
+      .type-block { flex-direction: column; gap: 12px; }
+    }
+
+    @media print {
+      * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      html, body { background: #000000 !important; color: #ffffff !important; }
+      .page { max-width: 100%; padding: 20px 40px; }
+
+      /* Each section starts on a new page */
+      section { break-before: page; margin-bottom: 0; padding-top: 40px; }
+
+      /* Hide the decorative dividers — page breaks replace them */
+      .divider { display: none; }
+
+      /* Header gets its own page */
+      .kit-header { break-after: page; margin-bottom: 0; padding: 120px 0; }
+
+      /* Prevent cards, swatches, rows from splitting across pages */
+      .logo-card, .usage-card, .font-card,
+      .color-swatch, .color-grid, .color-grid.secondary,
+      .component-card, .component-grid,
+      .token-card, .rule-card, .rules-grid,
+      .download-card, .download-grid,
+      .glow-row, .icon-row, .icon-box,
+      .font-cards, .type-block {
+        break-inside: avoid;
+      }
+
+      /* Keep section header (label + title + desc) together with content */
+      .section-label, .section-title, .section-desc {
+        break-after: avoid;
+      }
+
+      /* Force page break before usage grid so logo variants + icon sizes don't straddle pages */
+      .logo-usage-grid {
+        break-before: page;
+        padding-top: 40px;
+      }
+
+      /* The type scale is too long for one page — split after font cards */
+      .type-scale-wrap {
+        break-before: page;
+        padding-top: 40px;
+      }
+
+      /* Ensure the page background is always black (no white bleed) */
+      @page {
+        margin: 0.5in;
+        background: #000000;
+      }
+      .page {
+        padding: 0 20px;
+      }
+
+      /* Footer on its own at the end */
+      .kit-footer { break-before: page; margin-top: 0; padding-top: 120px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+
+    <!-- HEADER -->
+    <header class="kit-header">
+      <div class="logo-mark">
+        <span class="logo-text">cloak<span class="logo-dot">.</span></span>
+      </div>
+      <div class="subtitle">Brand Kit</div>
+      <div class="version">v1.0 — February 2026</div>
+    </header>
+
+    <!-- 01 LOGO -->
+    <section>
+      <div class="section-label">01</div>
+      <h2 class="section-title">Logo</h2>
+      <p class="section-desc">
+        The cloak wordmark is always lowercase, always followed by a period in the accent color.
+        The "C." icon is the abbreviated form for favicons and app icons.
+      </p>
+
+      <div class="logo-grid">
+        <div class="logo-card full">
+          <span class="card-label">Primary — Dark Background</span>
+          <span class="wordmark">cloak<span class="dot">.</span></span>
+        </div>
+        <div class="logo-card light">
+          <span class="card-label">Primary — Light Background</span>
+          <span class="wordmark wordmark-dark">cloak<span class="dot">.</span></span>
+        </div>
+        <div class="logo-card">
+          <span class="card-label">App Icon — Dot Mark</span>
+          <img src="public/icon.svg" alt="cloak dot icon" class="icon-preview" style="border-radius: 6px;">
+        </div>
+      </div>
+
+      <div class="logo-usage-grid">
+        <div class="usage-card">
+          <div class="usage-label">App Icon</div>
+          <img src="public/icon.svg" alt="dot icon" class="icon-preview" style="border-radius: 6px;">
+          <div class="usage-detail">SVG / 32 × 32px</div>
+        </div>
+        <div class="usage-card">
+          <div class="usage-label">Favicon</div>
+          <img src="public/icon.png" alt="favicon" class="icon-preview-sm" style="border-radius: 4px;">
+          <div class="usage-detail">64 × 64px</div>
+        </div>
+        <div class="usage-card">
+          <div class="usage-label">OG Image</div>
+          <img src="public/og-image.png" alt="OG image" style="width: 100%; border-radius: 4px; margin-top: 8px;">
+          <div class="usage-detail">1200 × 630px</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 02 COLOR PALETTE -->
+    <section>
+      <div class="section-label">02</div>
+      <h2 class="section-title">Color Palette</h2>
+      <p class="section-desc">
+        A high-contrast dark palette built around pure black and white,
+        with tomato accent for brand moments and interactions.
+      </p>
+
+      <div class="color-grid">
+        <div class="color-swatch">
+          <div class="swatch-color" style="background: #ff6347;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Accent</div>
+            <div class="swatch-hex">#ff6347</div>
+          </div>
+        </div>
+        <div class="color-swatch">
+          <div class="swatch-color" style="background: #ffffff; border-bottom: 1px solid var(--border);"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Foreground</div>
+            <div class="swatch-hex">#ffffff</div>
+          </div>
+        </div>
+        <div class="color-swatch">
+          <div class="swatch-color" style="background: #000000;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Background</div>
+            <div class="swatch-hex">#000000</div>
+          </div>
+        </div>
+        <div class="color-swatch">
+          <div class="swatch-color" style="background: #0a0a0a;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Card</div>
+            <div class="swatch-hex">#0a0a0a</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="color-grid secondary">
+        <div class="color-swatch small">
+          <div class="swatch-color" style="background: #141414;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Secondary</div>
+            <div class="swatch-hex">#141414</div>
+          </div>
+        </div>
+        <div class="color-swatch small">
+          <div class="swatch-color" style="background: #1a1a1a;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Muted</div>
+            <div class="swatch-hex">#1a1a1a</div>
+          </div>
+        </div>
+        <div class="color-swatch small">
+          <div class="swatch-color" style="background: #262626;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Border</div>
+            <div class="swatch-hex">#262626</div>
+          </div>
+        </div>
+        <div class="color-swatch small">
+          <div class="swatch-color" style="background: #22c55e;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Success</div>
+            <div class="swatch-hex">#22c55e</div>
+          </div>
+        </div>
+        <div class="color-swatch small">
+          <div class="swatch-color" style="background: #ef4444;"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Destructive</div>
+            <div class="swatch-hex">#ef4444</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 03 TYPOGRAPHY -->
+    <section>
+      <div class="section-label">03</div>
+      <h2 class="section-title">Typography</h2>
+      <p class="section-desc">
+        Manrope for all UI text — clean, geometric, and highly legible.
+        JetBrains Mono for numeric values, code, and data.
+      </p>
+
+      <div class="font-cards">
+        <div class="font-card">
+          <div class="font-name">Primary — Manrope</div>
+          <div class="font-preview">Aa Bb Cc 123</div>
+          <div class="font-usage">
+            Headings, body text, UI elements<br>
+            Weights: 300 (Light) — 600 (Semibold)<br>
+            Google Fonts
+          </div>
+        </div>
+        <div class="font-card">
+          <div class="font-name">Monospace — JetBrains Mono</div>
+          <div class="font-preview mono">Aa Bb Cc 123</div>
+          <div class="font-usage">
+            Numbers, values, code, data<br>
+            Tabular numbers enabled<br>
+            Google Fonts
+          </div>
+        </div>
+      </div>
+
+      <div class="type-scale-wrap">
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Display</div>
+            <div class="type-spec">
+              clamp(3rem, 8vw, 5rem)<br>
+              Weight 300<br>
+              Tracking -0.04em
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-display">Private DCA</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Headline</div>
+            <div class="type-spec">
+              1.5rem / 24px<br>
+              Weight 400<br>
+              Tracking -0.02em
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-headline">Accumulate Wealth Quietly</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Title</div>
+            <div class="type-spec">
+              0.9375rem / 15px<br>
+              Weight 500<br>
+              Tracking -0.01em
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-title">Privacy-preserving dollar cost averaging on Solana</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Body</div>
+            <div class="type-spec">
+              0.9375rem / 15px<br>
+              Weight 400<br>
+              Line-height 1.6
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-body">Break the link between your wallet and your DCA trades using zero-knowledge proofs and privacy pools.</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Label</div>
+            <div class="type-spec">
+              0.6875rem / 11px<br>
+              Weight 600<br>
+              Tracking 0.1em, uppercase
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-label">Active Strategy</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Mono</div>
+            <div class="type-spec">
+              JetBrains Mono<br>
+              0.875rem / 14px<br>
+              Tracking -0.02em
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-mono">0x4a8f...e3b2</span>
+          </div>
+        </div>
+        <div class="type-block">
+          <div class="type-meta">
+            <div class="type-name">Value</div>
+            <div class="type-spec">
+              JetBrains Mono<br>
+              2rem / 32px<br>
+              Tracking -0.03em
+            </div>
+          </div>
+          <div class="type-sample">
+            <span class="sample-value">$12,450.00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 04 COMPONENTS -->
+    <section>
+      <div class="section-label">04</div>
+      <h2 class="section-title">Components</h2>
+      <p class="section-desc">
+        Core UI elements used throughout the application.
+      </p>
+
+      <div class="component-grid">
+        <div class="component-card">
+          <div class="comp-label">Buttons</div>
+          <div class="comp-row">
+            <button class="demo-btn primary">Primary</button>
+            <button class="demo-btn accent-btn">Accent</button>
+            <button class="demo-btn ghost">Ghost</button>
+          </div>
+        </div>
+        <div class="component-card">
+          <div class="comp-label">Badges</div>
+          <div class="comp-row">
+            <span class="demo-badge default">Default</span>
+            <span class="demo-badge success">Success</span>
+            <span class="demo-badge warning">Warning</span>
+            <span class="demo-badge error">Error</span>
+          </div>
+        </div>
+        <div class="component-card">
+          <div class="comp-label">Status Indicators</div>
+          <div class="comp-row">
+            <span class="demo-dot active"></span><span class="status-label">Active</span>
+            <span style="width: 16px;"></span>
+            <span class="demo-dot paused"></span><span class="status-label">Paused</span>
+            <span style="width: 16px;"></span>
+            <span class="demo-dot inactive"></span><span class="status-label">Inactive</span>
+          </div>
+        </div>
+        <div class="component-card">
+          <div class="comp-label">Border Radius</div>
+          <div class="radius-demo">
+            <div>
+              <div class="radius-box" style="border-radius: 2px;">2px</div>
+              <div style="text-align: center; margin-top: 6px; font-size: 10px; color: var(--muted-fg);">sm</div>
+            </div>
+            <div>
+              <div class="radius-box" style="border-radius: 4px;">4px</div>
+              <div style="text-align: center; margin-top: 6px; font-size: 10px; color: var(--muted-fg);">md</div>
+            </div>
+            <div>
+              <div class="radius-box" style="border-radius: 6px;">6px</div>
+              <div style="text-align: center; margin-top: 6px; font-size: 10px; color: var(--muted-fg);">lg</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top: 24px;">
+        <div class="component-card">
+          <div class="comp-label">Glow Effects</div>
+          <div class="glow-row">
+            <div class="glow-box glow-standard">
+              <div class="glow-label">Standard</div>
+            </div>
+            <div class="glow-box glow-subtle-demo">
+              <div class="glow-label">Subtle</div>
+            </div>
+            <div class="glow-box glow-border">
+              <div class="glow-label">Border</div>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted-fg); line-height: 2;">
+              .glow → 0 0 20px rgba(255, 99, 71, 0.3)<br>
+              .glow-subtle → 0 0 40px rgba(255, 99, 71, 0.1)<br>
+              .border-glow:hover → border-color: accent + 0 0 20px rgba(255, 99, 71, 0.15)
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 05 DESIGN TOKENS -->
+    <section>
+      <div class="section-label">05</div>
+      <h2 class="section-title">Design Tokens</h2>
+      <p class="section-desc">
+        CSS custom properties and values used across the design system.
+      </p>
+
+      <div class="token-grid">
+        <div class="token-card">
+          <div class="token-label">Spacing</div>
+          <div class="token-item">
+            <span class="token-key">Base font size</span>
+            <span class="token-val">15px</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Base line height</span>
+            <span class="token-val">1.6</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Base letter spacing</span>
+            <span class="token-val">-0.01em</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Section padding</span>
+            <span class="token-val">6rem (96px)</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Section padding (mobile)</span>
+            <span class="token-val">4rem (64px)</span>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-label">Border Radius</div>
+          <div class="token-item">
+            <span class="token-key">--radius-sm</span>
+            <span class="token-val">2px</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">--radius-md</span>
+            <span class="token-val">4px</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">--radius-lg</span>
+            <span class="token-val">6px</span>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-label">Transitions</div>
+          <div class="token-item">
+            <span class="token-key">Default</span>
+            <span class="token-val">0.15s ease</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Slide up</span>
+            <span class="token-val">0.6s cubic-bezier(0.16, 1, 0.3, 1)</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Progress fill</span>
+            <span class="token-val">0.5s ease</span>
+          </div>
+        </div>
+        <div class="token-card">
+          <div class="token-label">Manifest</div>
+          <div class="token-item">
+            <span class="token-key">Name</span>
+            <span class="token-val">Cloak - Private DCA</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Short name</span>
+            <span class="token-val">Cloak</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Theme color</span>
+            <span class="token-val">#09090b</span>
+          </div>
+          <div class="token-item">
+            <span class="token-key">Twitter</span>
+            <span class="token-val">@usecloak</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 06 USAGE GUIDELINES -->
+    <section>
+      <div class="section-label">06</div>
+      <h2 class="section-title">Usage Guidelines</h2>
+      <p class="section-desc">
+        Rules for using the cloak brand consistently.
+      </p>
+
+      <div class="rules-grid">
+        <div class="rule-card">
+          <div class="rule-header do">Do</div>
+          <div class="rule-body">
+            <ul>
+              <li>Always use lowercase "cloak" in the wordmark</li>
+              <li>Always include the accent-colored period</li>
+              <li>Use Manrope for all UI text</li>
+              <li>Use JetBrains Mono for numeric/data values</li>
+              <li>Maintain high contrast (dark backgrounds)</li>
+              <li>Use the accent color sparingly for emphasis</li>
+              <li>Keep the icon on a dark background</li>
+            </ul>
+          </div>
+        </div>
+        <div class="rule-card">
+          <div class="rule-header dont">Don't</div>
+          <div class="rule-body">
+            <ul>
+              <li>Capitalize "Cloak" or "CLOAK" in the logo</li>
+              <li>Remove or recolor the accent period</li>
+              <li>Place the logo on busy or colorful backgrounds</li>
+              <li>Stretch, rotate, or distort the logo</li>
+              <li>Use the accent color as a large background fill</li>
+              <li>Mix additional typefaces into the UI</li>
+              <li>Add drop shadows or effects to the wordmark</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- 07 ASSET LIST -->
+    <section>
+      <div class="section-label">07</div>
+      <h2 class="section-title">Assets</h2>
+      <p class="section-desc">
+        All brand assets included in the project.
+      </p>
+
+      <div class="download-grid">
+        <div class="download-card">
+          <div class="dl-name">icon-512.png</div>
+          <div class="dl-detail">1024 × 1024px</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">icon-192.png</div>
+          <div class="dl-detail">384 × 384px</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">icon.png</div>
+          <div class="dl-detail">64 × 64px</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">icon.svg</div>
+          <div class="dl-detail">32 × 32px vector</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">og-image.png</div>
+          <div class="dl-detail">1200 × 630px</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">apple-touch-icon.png</div>
+          <div class="dl-detail">Touch icon</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="kit-footer">
+      <div class="footer-brand">cloak<span class="dot">.</span></div>
+      <div class="footer-links">
+        The private way to accumulate crypto<br>
+        <a href="https://usecloak.xyz">usecloak.xyz</a> · <a href="https://twitter.com/usecloak">@usecloak</a>
+      </div>
+    </footer>
+
+  </div>
+</body>
+</html>
