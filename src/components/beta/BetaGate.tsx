@@ -144,7 +144,7 @@ export function BetaGate() {
 
         {/* Footer hint */}
         <p className="text-xs text-muted-foreground/50 mt-8">
-          Don&apos;t have a code? Reach out to get early access.
+          Don&apos;t have a code? Reach out <a href="mailto:prasadjs178@gmail.com" className="underline hover:text-foreground transition-colors">here</a> to get early access.
         </p>
       </div>
     </div>
