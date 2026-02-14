@@ -44,7 +44,7 @@ export default function Home() {
   const renderConnectedContent = () => {
     if (isCheckingBeta) {
       return (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="min-h-[calc(100svh-5rem)] flex items-center justify-center">
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
               <div className="h-10 w-10 rounded-full border-2 border-muted" />
