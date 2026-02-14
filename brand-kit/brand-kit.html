@@ -712,22 +712,58 @@
       <div class="section-label">01</div>
       <h2 class="section-title">Logo</h2>
       <p class="section-desc">
-        The cloak wordmark is always lowercase, always followed by a period in the accent color.
-        The dot mark is the abbreviated icon form for favicons and app icons.
+        The cloak brand uses two logo versions: the <strong>icon</strong> (dot mark) for app icons and favicons,
+        and the <strong>letter mark</strong> (stylized "c" with accent dot) for brand presence where the full wordmark isn't needed.
+        The full wordmark is always lowercase, always followed by a period in the accent color.
       </p>
 
+      <!-- Full Wordmark -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 12px;">Wordmark</div>
+      </div>
       <div class="logo-grid">
         <div class="logo-card full">
-          <span class="card-label">Primary — Dark Background</span>
+          <span class="card-label">Wordmark — Dark Background</span>
           <span class="wordmark">cloak<span class="dot">.</span></span>
         </div>
         <div class="logo-card light">
-          <span class="card-label">Primary — Light Background</span>
+          <span class="card-label">Wordmark — Light Background</span>
           <span class="wordmark wordmark-dark">cloak<span class="dot">.</span></span>
         </div>
+      </div>
+
+      <!-- Two Logo Versions -->
+      <div style="margin-top: 48px; margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 12px;">Two Logo Versions</div>
+      </div>
+      <div class="logo-grid">
         <div class="logo-card">
-          <span class="card-label">App Icon — Dot Mark</span>
-          <img src="../public/icon.svg" alt="cloak dot icon" class="icon-preview" style="border-radius: 6px;">
+          <span class="card-label">Version 1 — Icon (Dot Mark)</span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+            <img src="../public/icon.svg" alt="cloak dot icon" class="icon-preview" style="border-radius: 6px;">
+            <div style="font-size: 12px; color: var(--muted-fg); text-align: center;">App icons, favicons,<br>small contexts</div>
+          </div>
+        </div>
+        <div class="logo-card">
+          <span class="card-label">Version 2 — Letter Mark</span>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+            <img src="icons/cloak-lettermark-white.svg" alt="cloak letter mark" style="width: 80px; height: 80px; border-radius: 6px;">
+            <div style="font-size: 12px; color: var(--muted-fg); text-align: center;">Brand presence, social,<br>marketing materials</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Letter Mark Variants -->
+      <div style="margin-top: 24px;">
+        <div class="logo-grid">
+          <div class="logo-card">
+            <span class="card-label">Letter Mark — Dark Background</span>
+            <img src="icons/cloak-lettermark-white.svg" alt="cloak letter mark white" style="width: 120px; height: 120px; border-radius: 6px;">
+          </div>
+          <div class="logo-card light">
+            <span class="card-label">Letter Mark — Light Background</span>
+            <img src="icons/cloak-lettermark-black.svg" alt="cloak letter mark black" style="width: 120px; height: 120px; border-radius: 6px;">
+          </div>
         </div>
       </div>
 
@@ -1190,6 +1226,14 @@
         <div class="download-card">
           <div class="dl-name">icons/cloak-favicon-16.png</div>
           <div class="dl-detail">Favicon — 16 × 16px</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">icons/cloak-lettermark-white.svg</div>
+          <div class="dl-detail">Letter mark — white (for dark bg)</div>
+        </div>
+        <div class="download-card">
+          <div class="dl-name">icons/cloak-lettermark-black.svg</div>
+          <div class="dl-detail">Letter mark — black (for light bg)</div>
         </div>
         <div class="download-card">
           <div class="dl-name">wordmark/cloak-wordmark-white.svg</div>
