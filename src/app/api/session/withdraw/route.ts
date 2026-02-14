@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isBetaApproved } from '@/lib/beta';
 import {
   Connection,
   PublicKey,
@@ -53,6 +54,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Wallet address, token mint, amount, and session keypair required' },
         { status: 400 }
+      );
+    }
+
+    if (!(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 

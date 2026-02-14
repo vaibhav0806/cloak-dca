@@ -4,12 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { WalletButton } from '@/components/wallet/WalletButton';
 import { Dashboard } from '@/components/dashboard/Dashboard';
+import { BetaGate } from '@/components/beta/BetaGate';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useAppStore } from '@/store';
 import { Eye, EyeOff, Check, ArrowRight, Shield } from 'lucide-react';
 
 export default function Home() {
   const { connected, connecting } = useWallet();
   const [mounted, setMounted] = useState(false);
+  const isBetaApproved = useAppStore((state) => state.isBetaApproved);
+  const isCheckingBeta = useAppStore((state) => state.isCheckingBeta);
 
   useEffect(() => {
     setMounted(true);
@@ -36,11 +40,34 @@ export default function Home() {
     );
   }
 
+  // Determine what to show for connected users
+  const renderConnectedContent = () => {
+    if (isCheckingBeta) {
+      return (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="h-10 w-10 rounded-full border-2 border-muted" />
+              <div className="absolute inset-0 h-10 w-10 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+            </div>
+            <p className="text-sm text-muted-foreground">Checking access...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!isBetaApproved) {
+      return <BetaGate />;
+    }
+
+    return <Dashboard />;
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1">
-        {!connected ? <Landing /> : <Dashboard />}
+        {!connected ? <Landing /> : renderConnectedContent()}
       </main>
       {!connected && <Footer />}
     </div>
@@ -187,8 +214,8 @@ function Landing() {
               className="inline-flex items-center gap-2 mb-8 sm:mb-10"
               style={{ animation: 'fadeSlideUp 0.7s ease-out forwards', opacity: 0 }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs sm:text-sm text-muted-foreground/70">Live on Solana</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-xs sm:text-sm text-muted-foreground/70">Private Beta</span>
             </div>
 
             {/* Headline */}

@@ -6,6 +6,12 @@ interface CreateDCAParamsWithSession extends CreateDCAParams {
 }
 
 interface AppState {
+  // Beta
+  isBetaApproved: boolean;
+  isCheckingBeta: boolean;
+  checkBetaStatus: () => Promise<void>;
+  redeemBetaCode: (code: string) => Promise<{ success: boolean; error?: string }>;
+
   // Wallet
   isConnected: boolean;
   walletAddress: string | null;
@@ -48,6 +54,54 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Beta
+  isBetaApproved: false,
+  isCheckingBeta: false,
+
+  checkBetaStatus: async () => {
+    const { walletAddress } = get();
+    if (!walletAddress) return;
+
+    set({ isCheckingBeta: true });
+    try {
+      const response = await fetch('/api/beta/status', {
+        headers: { 'x-wallet-address': walletAddress },
+      });
+      if (response.ok) {
+        const { approved } = await response.json();
+        set({ isBetaApproved: approved, isCheckingBeta: false });
+      } else {
+        set({ isBetaApproved: false, isCheckingBeta: false });
+      }
+    } catch {
+      set({ isBetaApproved: false, isCheckingBeta: false });
+    }
+  },
+
+  redeemBetaCode: async (code: string) => {
+    const { walletAddress } = get();
+    if (!walletAddress) return { success: false, error: 'Wallet not connected' };
+
+    try {
+      const response = await fetch('/api/beta/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, walletAddress }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        set({ isBetaApproved: true });
+        return { success: true };
+      }
+
+      return { success: false, error: data.error || 'Invalid code' };
+    } catch {
+      return { success: false, error: 'Failed to verify code' };
+    }
+  },
+
   // Wallet
   isConnected: false,
   walletAddress: null,
@@ -55,7 +109,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       isConnected: !!address,
       walletAddress: address,
-      // Reset fetch flags when wallet changes
+      // Reset beta and fetch flags when wallet changes
+      isBetaApproved: false,
+      isCheckingBeta: false,
       hasFetchedConfigs: false,
       hasFetchedBalances: false,
       dcaConfigs: address ? get().dcaConfigs : [],

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { isBetaApproved } from '@/lib/beta';
 import { SUPPORTED_OUTPUT_TOKENS, TOKENS } from '@/lib/solana/constants';
 
 export async function POST(request: NextRequest) {
@@ -12,6 +13,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Session public key required' },
         { status: 400 }
+      );
+    }
+
+    const walletAddress = request.headers.get('x-wallet-address');
+    if (walletAddress && !(await isBetaApproved(walletAddress))) {
+      return NextResponse.json(
+        { error: 'Beta access required' },
+        { status: 403 }
       );
     }
 

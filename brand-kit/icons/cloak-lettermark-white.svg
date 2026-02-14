@@ -1,0 +1,8 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#000000"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300&amp;display=swap');
+  </style>
+  <text x="28" y="158" font-family="Manrope, system-ui, sans-serif" font-size="180" font-weight="300" letter-spacing="-8" fill="#ffffff">c</text>
+  <circle cx="160" cy="148" r="14" fill="#ff6347"/>
+</svg>

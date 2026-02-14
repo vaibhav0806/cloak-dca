@@ -20,11 +20,13 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 function WalletConnectionHandler({ children }: { children: React.ReactNode }) {
   const { publicKey, connected } = useWallet();
   const setWallet = useAppStore((state) => state.setWallet);
+  const checkBetaStatus = useAppStore((state) => state.checkBetaStatus);
   const prevConnected = useRef(false);
 
   useEffect(() => {
     if (connected && publicKey) {
       setWallet(publicKey.toBase58());
+      checkBetaStatus();
       if (!prevConnected.current) {
         analytics.walletConnected();
       }
