@@ -123,7 +123,6 @@ function Footer() {
           <span className="text-sm text-muted-foreground">— private dca on solana</span>
         </div>
         <div className="flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#" className="hover:text-foreground transition-colors">GitHub</a>
           <a href="#" className="hover:text-foreground transition-colors">Twitter</a>
         </div>
       </div>
