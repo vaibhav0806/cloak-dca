@@ -103,27 +103,21 @@ export const MusicScene4CTA: React.FC = () => {
         })}
       </div>
 
-      {/* "usecloak.xyz" — terminal type reveal */}
+      {/* "usecloak.xyz" — terminal type reveal, centered via clip-path */}
       <div
         style={{
-          overflow: 'hidden',
-          width: urlWidth,
           marginTop: 8,
           opacity: urlOpacity,
+          fontFamily: jetbrainsFamily,
+          fontWeight: 400,
+          fontSize: 36,
+          letterSpacing: 1,
+          color: COLORS.mutedFg,
+          whiteSpace: 'nowrap',
+          clipPath: `inset(0 ${100 - interpolate(urlRevealProgress, [0, 1], [0, 100])}% 0 0)`,
         }}
       >
-        <div
-          style={{
-            fontFamily: jetbrainsFamily,
-            fontWeight: 400,
-            fontSize: 36,
-            letterSpacing: 1,
-            color: COLORS.mutedFg,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {URL_TEXT}
-        </div>
+        {URL_TEXT}
       </div>
 
       {/* "powered by solana" */}

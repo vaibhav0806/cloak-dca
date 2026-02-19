@@ -36,8 +36,8 @@ export const MusicScene3Features: React.FC = () => {
 
   // === Phase 1: Pillars (frames 0–59) ===
 
-  // Pillar dramatic exit at 1.33s (frame 40)
-  const pillarExit = dramaticExit(frame, 40, 19);
+  // Pillar dramatic exit at 1.83s (frame 55)
+  const pillarExit = dramaticExit(frame, 55, 19);
 
   // Glowing accent line wipe
   const lineProgress = spring({
