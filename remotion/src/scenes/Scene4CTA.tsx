@@ -5,11 +5,14 @@ import { jetbrainsFamily } from '../lib/fonts';
 import { CloakWordmark } from '../components/CloakWordmark';
 import { slideUp, SPRING_CONFIGS } from '../lib/animations';
 
-export const Scene5CTA: React.FC = () => {
-  const frame = useCurrentFrame(); // local frame 0-60
+export const Scene4CTA: React.FC = () => {
+  const frame = useCurrentFrame(); // local frame 0–120
 
+  // Wordmark returns at 11.0s (frame 0 local) with dot pop
+  // "usecloak.xyz" fades up at 11.6s → local frame 18
   const url = slideUp(frame, FPS, 18, SPRING_CONFIGS.smooth);
-  const handle = slideUp(frame, FPS, 26, SPRING_CONFIGS.smooth);
+  // "powered by solana" fades up at 12.2s → local frame 36
+  const powered = slideUp(frame, FPS, 36, SPRING_CONFIGS.smooth);
 
   return (
     <div
@@ -44,8 +47,8 @@ export const Scene5CTA: React.FC = () => {
           fontWeight: 400,
           fontSize: 28,
           color: COLORS.mutedFg,
-          opacity: handle.opacity,
-          transform: `translateY(${handle.translateY}px)`,
+          opacity: powered.opacity,
+          transform: `translateY(${powered.translateY}px)`,
         }}
       >
         powered by solana

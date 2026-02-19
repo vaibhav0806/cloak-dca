@@ -13,7 +13,7 @@ export const CenterGlow: React.FC = () => {
     [0.3, 0.6]
   );
 
-  // Intensify during brand reveal (frames 120-240)
+  // Intensify during brand reveal (scene 2: frames 105–210)
   const revealIntensity = interpolate(
     frame,
     [
@@ -26,10 +26,15 @@ export const CenterGlow: React.FC = () => {
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );
 
-  // Final pulse during CTA
+  // Final soft pulse during CTA (scene 4: frames 330–450)
   const ctaPulse = interpolate(
     frame,
-    [SCENES.cta.start, SCENES.cta.start + 15, SCENES.cta.start + 40, SCENES.cta.start + SCENES.cta.duration],
+    [
+      SCENES.cta.start + 54, // 12.8s = frame 384, local ~54
+      SCENES.cta.start + 70,
+      SCENES.cta.start + 100,
+      SCENES.cta.start + SCENES.cta.duration,
+    ],
     [0, 0.3, 0.3, 0.15],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );

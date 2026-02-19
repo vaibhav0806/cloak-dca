@@ -1,12 +1,11 @@
 import React from 'react';
-import { AbsoluteFill, Sequence } from 'remotion';
+import { AbsoluteFill, Sequence, Audio, staticFile } from 'remotion';
 import { SCENES } from './lib/constants';
 import { Background } from './components/Background';
 import { Scene1Hook } from './scenes/Scene1Hook';
 import { Scene2BrandReveal } from './scenes/Scene2BrandReveal';
-import { Scene3ValueProps } from './scenes/Scene3ValueProps';
-import { Scene4Differentiator } from './scenes/Scene4Differentiator';
-import { Scene5CTA } from './scenes/Scene5CTA';
+import { Scene3Features } from './scenes/Scene3Features';
+import { Scene4CTA } from './scenes/Scene4CTA';
 
 export const CloakVideo: React.FC = () => {
   return (
@@ -14,29 +13,27 @@ export const CloakVideo: React.FC = () => {
       {/* Persistent background layer */}
       <Background />
 
-      {/* Scene 1: The Hook (0s–4s) */}
+      {/* Scene 1: The Hook (0s–3.5s) — VO: "Your trades are public." */}
       <Sequence from={SCENES.hook.start} durationInFrames={SCENES.hook.duration}>
         <Scene1Hook />
+        <Audio src={staticFile('audio/vo-1.mp3')} startFrom={0} />
       </Sequence>
 
-      {/* Scene 2: Brand Reveal (4s–8s) */}
+      {/* Scene 2: Brand Reveal (3.5s–7s) — NO VO, visual only */}
       <Sequence from={SCENES.brandReveal.start} durationInFrames={SCENES.brandReveal.duration}>
         <Scene2BrandReveal />
       </Sequence>
 
-      {/* Scene 3: Value Props (8s–13s) */}
-      <Sequence from={SCENES.valueProps.start} durationInFrames={SCENES.valueProps.duration}>
-        <Scene3ValueProps />
+      {/* Scene 3: Features (7s–11s) — VO: "Private DCA on Solana." */}
+      <Sequence from={SCENES.features.start} durationInFrames={SCENES.features.duration}>
+        <Scene3Features />
+        <Audio src={staticFile('audio/vo-2.mp3')} startFrom={0} />
       </Sequence>
 
-      {/* Scene 4: Differentiator (13s–15.7s) */}
-      <Sequence from={SCENES.differentiator.start} durationInFrames={SCENES.differentiator.duration}>
-        <Scene4Differentiator />
-      </Sequence>
-
-      {/* Scene 5: CTA / Closer (15.7s–18s) */}
+      {/* Scene 4: CTA (11s–15s) — VO: "Start accumulating privately." */}
       <Sequence from={SCENES.cta.start} durationInFrames={SCENES.cta.duration}>
-        <Scene5CTA />
+        <Scene4CTA />
+        <Audio src={staticFile('audio/vo-3.mp3')} startFrom={0} />
       </Sequence>
     </AbsoluteFill>
   );
