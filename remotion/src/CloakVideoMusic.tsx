@@ -42,8 +42,10 @@ export const CloakVideoMusic: React.FC = () => {
         <MusicScene4CTA />
       </Sequence>
 
-      {/* Background music — full 15s */}
-      <Audio src={staticFile('audio/music.mp3')} volume={1} />
+      {/* Background music — capped to video duration, handles longer audio */}
+      <Sequence from={0} durationInFrames={DURATION_FRAMES} name="Music">
+        <Audio src={staticFile('audio/music.mp3')} volume={1} />
+      </Sequence>
     </AbsoluteFill>
   );
 };
