@@ -48,7 +48,7 @@ export const Scene5CTA: React.FC = () => {
           transform: `translateY(${handle.translateY}px)`,
         }}
       >
-        @cloakdefi
+        powered by solana
       </div>
     </div>
   );
