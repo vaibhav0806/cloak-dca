@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, Audio, staticFile } from 'remotion';
-import { SCENES } from './lib/constants';
+import { SCENES, DURATION_FRAMES } from './lib/constants';
 import { Background } from './components/Background';
 import { Scene1Hook } from './scenes/Scene1Hook';
 import { Scene2BrandReveal } from './scenes/Scene2BrandReveal';
@@ -13,27 +13,40 @@ export const CloakVideo: React.FC = () => {
       {/* Persistent background layer */}
       <Background />
 
-      {/* Scene 1: The Hook (0s–3.5s) — VO: "Your trades are public." */}
+      {/* Scene 1: The Hook (0s–3.5s) */}
       <Sequence from={SCENES.hook.start} durationInFrames={SCENES.hook.duration}>
         <Scene1Hook />
-        <Audio src={staticFile('audio/vo-1.mp3')} startFrom={0} />
       </Sequence>
 
-      {/* Scene 2: Brand Reveal (3.5s–7s) — NO VO, visual only */}
+      {/* Scene 2: Brand Reveal (3.5s–7s) — silent visuals */}
       <Sequence from={SCENES.brandReveal.start} durationInFrames={SCENES.brandReveal.duration}>
         <Scene2BrandReveal />
       </Sequence>
 
-      {/* Scene 3: Features (7s–11s) — VO: "Private DCA on Solana." */}
+      {/* Scene 3: Features (7s–11s) */}
       <Sequence from={SCENES.features.start} durationInFrames={SCENES.features.duration}>
         <Scene3Features />
-        <Audio src={staticFile('audio/vo-2.mp3')} startFrom={0} />
       </Sequence>
 
-      {/* Scene 4: CTA (11s–15s) — VO: "Start accumulating privately." */}
+      {/* Scene 4: CTA (11s–15s) */}
       <Sequence from={SCENES.cta.start} durationInFrames={SCENES.cta.duration}>
         <Scene4CTA />
-        <Audio src={staticFile('audio/vo-3.mp3')} startFrom={0} />
+      </Sequence>
+
+      {/* VO audio — placed at composition level so they can bleed across scenes */}
+      {/* VO 1: "Every trade you make on-chain is public..." at 0.3s (frame 9), ~4.5s */}
+      <Sequence from={9} durationInFrames={DURATION_FRAMES - 9}>
+        <Audio src={staticFile('audio/line_1.mp3')} />
+      </Sequence>
+
+      {/* VO 2: "Cloak gives you private, automated DCA..." at 7.0s (frame 210), ~4.2s */}
+      <Sequence from={210} durationInFrames={DURATION_FRAMES - 210}>
+        <Audio src={staticFile('audio/line_2.mp3')} />
+      </Sequence>
+
+      {/* VO 3: "Take back your privacy..." at 11.3s (frame 339), ~4.6s */}
+      <Sequence from={339} durationInFrames={DURATION_FRAMES - 339}>
+        <Audio src={staticFile('audio/line_3.mp3')} />
       </Sequence>
     </AbsoluteFill>
   );
