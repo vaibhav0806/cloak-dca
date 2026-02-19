@@ -48,3 +48,6 @@ bun.lock
 
 # cache folder
 cache/
+
+# grail integration plan
+GRAIL_INTEGRATION_PLAN.md
