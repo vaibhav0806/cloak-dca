@@ -1,17 +1,28 @@
 import React from 'react';
 import { Composition } from 'remotion';
 import { CloakVideo } from './CloakVideo';
+import { CloakVideoMusic } from './CloakVideoMusic';
 import { WIDTH, HEIGHT, FPS, DURATION_FRAMES } from './lib/constants';
 
 export const RemotionRoot: React.FC = () => {
   return (
-    <Composition
-      id="CloakIntro"
-      component={CloakVideo}
-      durationInFrames={DURATION_FRAMES}
-      fps={FPS}
-      width={WIDTH}
-      height={HEIGHT}
-    />
+    <>
+      <Composition
+        id="CloakIntro"
+        component={CloakVideo}
+        durationInFrames={DURATION_FRAMES}
+        fps={FPS}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+      <Composition
+        id="CloakIntroMusic"
+        component={CloakVideoMusic}
+        durationInFrames={DURATION_FRAMES}
+        fps={FPS}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+    </>
   );
 };
