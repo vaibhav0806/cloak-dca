@@ -34,19 +34,19 @@ export const CloakVideo: React.FC = () => {
       </Sequence>
 
       {/* VO audio — placed at composition level so they can bleed across scenes */}
-      {/* VO 1: "Every trade you make on-chain is public..." at 0.3s (frame 9), ~4.5s */}
-      <Sequence from={9} durationInFrames={DURATION_FRAMES - 9}>
-        <Audio src={staticFile('audio/line_1.mp3')} />
+      {/* VO 1: "Every trade you make on-chain is public..." at 0.3s (frame 9) */}
+      <Sequence from={9} durationInFrames={135} name="VO 1">
+        <Audio src={staticFile('audio/line_1.mp3')} volume={1} />
       </Sequence>
 
-      {/* VO 2: "Cloak gives you private, automated DCA..." at 7.0s (frame 210), ~4.2s */}
-      <Sequence from={210} durationInFrames={DURATION_FRAMES - 210}>
-        <Audio src={staticFile('audio/line_2.mp3')} />
+      {/* VO 2: "Cloak gives you private, automated DCA..." at 7.0s (frame 210) */}
+      <Sequence from={210} durationInFrames={127} name="VO 2">
+        <Audio src={staticFile('audio/line_2.mp3')} volume={1} />
       </Sequence>
 
-      {/* VO 3: "Take back your privacy..." at 11.3s (frame 339), ~4.6s */}
-      <Sequence from={339} durationInFrames={DURATION_FRAMES - 339}>
-        <Audio src={staticFile('audio/line_3.mp3')} />
+      {/* VO 3: "Take back your privacy..." at 11.3s (frame 339) */}
+      <Sequence from={339} durationInFrames={111} name="VO 3">
+        <Audio src={staticFile('audio/line_3.mp3')} volume={1} />
       </Sequence>
     </AbsoluteFill>
   );
