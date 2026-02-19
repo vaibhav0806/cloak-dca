@@ -20,15 +20,15 @@ export const PillarItem: React.FC<PillarItemProps> = ({ icon, label, delay }) =>
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 16,
+        gap: 20,
         opacity,
         transform: `translateY(${translateY}px)`,
       }}
     >
       <div
         style={{
-          width: 64,
-          height: 64,
+          width: 80,
+          height: 80,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -43,7 +43,7 @@ export const PillarItem: React.FC<PillarItemProps> = ({ icon, label, delay }) =>
         style={{
           fontFamily: manropeFamily,
           fontWeight: 500,
-          fontSize: 28,
+          fontSize: 36,
           color: COLORS.foreground,
           letterSpacing: -0.5,
         }}

@@ -5,12 +5,12 @@ import { manropeFamily } from '../lib/fonts';
 import { slideUp, fadeOut, SPRING_CONFIGS } from '../lib/animations';
 
 export const Scene4Differentiator: React.FC = () => {
-  const frame = useCurrentFrame(); // local frame 0-80
+  const frame = useCurrentFrame(); // local frame 0-60
 
-  const line1 = slideUp(frame, FPS, 8, SPRING_CONFIGS.gentle);
-  const line2 = slideUp(frame, FPS, 20, SPRING_CONFIGS.gentle);
+  const line1 = slideUp(frame, FPS, 5, SPRING_CONFIGS.gentle);
+  const line2 = slideUp(frame, FPS, 14, SPRING_CONFIGS.gentle);
 
-  const exitOpacity = fadeOut(frame, 60, 20);
+  const exitOpacity = fadeOut(frame, 44, 16);
 
   return (
     <div
@@ -30,7 +30,7 @@ export const Scene4Differentiator: React.FC = () => {
         style={{
           fontFamily: manropeFamily,
           fontWeight: 400,
-          fontSize: 44,
+          fontSize: 58,
           color: COLORS.foreground,
           opacity: line1.opacity,
           transform: `translateY(${line1.translateY}px)`,
@@ -44,7 +44,7 @@ export const Scene4Differentiator: React.FC = () => {
         style={{
           fontFamily: manropeFamily,
           fontWeight: 400,
-          fontSize: 44,
+          fontSize: 58,
           color: COLORS.accent,
           opacity: line2.opacity,
           transform: `translateY(${line2.translateY}px)`,

@@ -6,10 +6,10 @@ import { CloakWordmark } from '../components/CloakWordmark';
 import { slideUp, SPRING_CONFIGS } from '../lib/animations';
 
 export const Scene5CTA: React.FC = () => {
-  const frame = useCurrentFrame(); // local frame 0-70
+  const frame = useCurrentFrame(); // local frame 0-60
 
-  const url = slideUp(frame, FPS, 25, SPRING_CONFIGS.smooth);
-  const handle = slideUp(frame, FPS, 35, SPRING_CONFIGS.smooth);
+  const url = slideUp(frame, FPS, 18, SPRING_CONFIGS.smooth);
+  const handle = slideUp(frame, FPS, 26, SPRING_CONFIGS.smooth);
 
   return (
     <div
@@ -24,12 +24,12 @@ export const Scene5CTA: React.FC = () => {
         gap: 20,
       }}
     >
-      <CloakWordmark delay={5} fontSize={80} />
+      <CloakWordmark delay={4} fontSize={110} />
       <div
         style={{
           fontFamily: jetbrainsFamily,
           fontWeight: 400,
-          fontSize: 26,
+          fontSize: 34,
           color: COLORS.mutedFg,
           opacity: url.opacity,
           transform: `translateY(${url.translateY}px)`,
@@ -42,8 +42,8 @@ export const Scene5CTA: React.FC = () => {
         style={{
           fontFamily: jetbrainsFamily,
           fontWeight: 400,
-          fontSize: 20,
-          color: COLORS.border,
+          fontSize: 28,
+          color: COLORS.mutedFg,
           opacity: handle.opacity,
           transform: `translateY(${handle.translateY}px)`,
         }}

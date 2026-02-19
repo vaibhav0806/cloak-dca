@@ -5,16 +5,16 @@ import { manropeFamily } from '../lib/fonts';
 import { fadeIn, fadeOut, slideUp, SPRING_CONFIGS } from '../lib/animations';
 
 export const Scene1Hook: React.FC = () => {
-  const frame = useCurrentFrame(); // local frame 0-120
+  const frame = useCurrentFrame(); // local frame 0-75
 
-  // Line 1: "Your trades are public." — fades up at 1s (frame 30)
-  const line1 = slideUp(frame, FPS, 30, SPRING_CONFIGS.gentle);
-  const line1Exit = fadeOut(frame, 80, 15);
+  // Line 1: "Your trades are public." — fades up at frame 10
+  const line1 = slideUp(frame, FPS, 10, SPRING_CONFIGS.gentle);
+  const line1Exit = fadeOut(frame, 38, 10);
   const line1Opacity = Math.min(line1.opacity, line1Exit);
 
-  // Line 2: "Everyone can see your strategy." — appears at ~2.8s (frame 84)
-  const line2 = slideUp(frame, FPS, 84, SPRING_CONFIGS.gentle);
-  const line2Exit = fadeOut(frame, 105, 15);
+  // Line 2: "Everyone can see your strategy." — appears at frame 42
+  const line2 = slideUp(frame, FPS, 42, SPRING_CONFIGS.gentle);
+  const line2Exit = fadeOut(frame, 62, 13);
   const line2Opacity = Math.min(line2.opacity, line2Exit);
 
   return (
@@ -34,7 +34,7 @@ export const Scene1Hook: React.FC = () => {
         style={{
           fontFamily: manropeFamily,
           fontWeight: 400,
-          fontSize: 48,
+          fontSize: 64,
           color: COLORS.foreground,
           opacity: line1Opacity,
           transform: `translateY(${line1.translateY}px)`,
@@ -48,7 +48,7 @@ export const Scene1Hook: React.FC = () => {
         style={{
           fontFamily: manropeFamily,
           fontWeight: 400,
-          fontSize: 48,
+          fontSize: 64,
           color: COLORS.foreground,
           opacity: line2Opacity,
           transform: `translateY(${line2.translateY}px)`,

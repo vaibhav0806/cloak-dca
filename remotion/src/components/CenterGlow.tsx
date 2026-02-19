@@ -29,7 +29,7 @@ export const CenterGlow: React.FC = () => {
   // Final pulse during CTA
   const ctaPulse = interpolate(
     frame,
-    [SCENES.cta.start, SCENES.cta.start + 20, SCENES.cta.start + 50, SCENES.cta.start + SCENES.cta.duration],
+    [SCENES.cta.start, SCENES.cta.start + 15, SCENES.cta.start + 40, SCENES.cta.start + SCENES.cta.duration],
     [0, 0.3, 0.3, 0.15],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }
   );

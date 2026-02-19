@@ -15,15 +15,15 @@ export const COLORS = {
 export const WIDTH = 1920;
 export const HEIGHT = 1080;
 export const FPS = 30;
-export const DURATION_FRAMES = 540; // 18 seconds
+export const DURATION_FRAMES = 360; // 12 seconds
 
 // Scene timing (in frames)
 export const SCENES = {
-  hook: { start: 0, duration: 120 },        // 0s–4s
-  brandReveal: { start: 120, duration: 120 }, // 4s–8s
-  valueProps: { start: 240, duration: 150 },  // 8s–13s
-  differentiator: { start: 390, duration: 80 }, // 13s–15.7s
-  cta: { start: 470, duration: 70 },         // 15.7s–18s
+  hook: { start: 0, duration: 75 },          // 0s–2.5s
+  brandReveal: { start: 75, duration: 75 },   // 2.5s–5s
+  valueProps: { start: 150, duration: 90 },   // 5s–8s
+  differentiator: { start: 240, duration: 60 }, // 8s–10s
+  cta: { start: 300, duration: 60 },          // 10s–12s
 } as const;
 
 // Orbital ring configs (matching landing page hero)
