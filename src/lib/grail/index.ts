@@ -42,8 +42,11 @@ interface PurchaseResponse {
       expiresAt: string;
     };
   };
-  estimatedGoldAmount: number;
-  estimatedUsdcCost: number;
+  goldAmount: number;
+  estimatedGoldAmount?: number;
+  estimatedUsdcCost?: number;
+  quoteUsdcAmount?: number;
+  maxUsdcAmount?: number;
 }
 
 interface SaleResponse {

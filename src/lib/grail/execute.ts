@@ -160,7 +160,7 @@ export async function executeGrailPurchase({
 
   return {
     txId,
-    goldAmount: purchaseResult.estimatedGoldAmount,
+    goldAmount: purchaseResult.goldAmount ?? purchaseResult.estimatedGoldAmount,
     goldPrice: goldPricePerOunce,
   };
 }

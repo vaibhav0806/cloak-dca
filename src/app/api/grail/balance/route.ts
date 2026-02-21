@@ -14,21 +14,14 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Look up user and their GRAIL user ID
+    // Look up user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('grail_user_id')
+      .select('id')
       .eq('wallet_address', walletAddress)
       .single();
 
     if (userError || !user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!user.grail_user_id) {
       return NextResponse.json({
         goldAmount: 0,
         usdValue: 0,
@@ -36,13 +29,29 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get user's gold balance from GRAIL
-    const [grailUser, priceData] = await Promise.all([
-      grailService.getUser(user.grail_user_id),
-      grailService.getGoldPrice(),
-    ]);
+    // Calculate gold balance from successful executions (partner purchase model)
+    const { data: executions } = await supabase
+      .from('executions')
+      .select('gold_amount, dca_config_id, dca_configs!inner(user_id)')
+      .eq('dca_configs.user_id', user.id)
+      .eq('status', 'success')
+      .not('gold_amount', 'is', null);
 
-    const goldAmount = grailUser.goldBalance || 0;
+    const goldAmount = (executions || []).reduce(
+      (sum, e) => sum + (Number(e.gold_amount) || 0),
+      0
+    );
+
+    if (goldAmount === 0) {
+      return NextResponse.json({
+        goldAmount: 0,
+        usdValue: 0,
+        goldPricePerOunce: 0,
+      });
+    }
+
+    // Get current gold price for USD valuation
+    const priceData = await grailService.getGoldPrice();
     const goldPricePerOunce = priceData.price;
     const usdValue = goldAmount * goldPricePerOunce;
 
