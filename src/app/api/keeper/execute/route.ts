@@ -2,18 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 import { getConnection } from '@/lib/solana/connection';
 import { addHours } from 'date-fns';
-import { createServerPrivacyClient } from '@/lib/privacy/server';
 import { getQuote, getSwapTransaction } from '@/lib/jupiter';
-import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, GOLD_MINT } from '@/lib/solana/constants';
 import { Keypair, Connection, PublicKey } from '@solana/web3.js';
+import { executeGrailPurchase } from '@/lib/grail/execute';
 
 /**
  * Get the number of decimals for a token mint
  */
 function getTokenDecimals(mint: string): number {
   if (mint === SOL_MINT) return 9;
-  if (mint === CBBTC_MINT || mint === ZEC_MINT) return 8;
-  return 6; // USDC, USDT, and default
+  if (mint === GOLD_MINT) return 9;
+  return 6; // USDC and default
 }
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
@@ -46,44 +46,14 @@ async function confirmTransactionPolling(
 }
 
 /**
- * Retry a function with exponential backoff
- */
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  baseDelay = 2000,
-  description = 'operation'
-): Promise<T> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error as Error;
-      console.log(`${description} attempt ${attempt}/${maxRetries} failed: ${lastError.message}`);
-
-      if (attempt < maxRetries) {
-        const delay = baseDelay * attempt;
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-
-  throw lastError || new Error(`${description} failed after ${maxRetries} attempts`);
-}
-
-/**
  * Keeper service endpoint
  *
  * This is called by Vercel Cron (or manually) to execute due DCA trades.
  * For each due DCA:
  * 1. Decrypt session keypair from encrypted_data
- * 2. Withdraw from Privacy Cash (unshield input tokens)
- * 3. Swap via Jupiter
- * 4. Deposit to Privacy Cash (shield output tokens)
- * 5. Update execution status
+ * 2. Check session wallet balance directly (devnet: no privacy withdrawal)
+ * 3. Route: GOLD → GRAIL purchase, else → Jupiter swap
+ * 4. Update execution + DCA config
  */
 export async function GET(request: NextRequest) {
   try {
@@ -100,7 +70,6 @@ export async function GET(request: NextRequest) {
 
     const supabase = createServiceClient();
     const connection = getConnection();
-    const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL || 'https://api.devnet.solana.com';
     const now = new Date();
 
     // Get DCAs that are due for execution
@@ -108,7 +77,7 @@ export async function GET(request: NextRequest) {
       .from('dca_configs')
       .select(`
         *,
-        users!inner(wallet_address)
+        users!inner(id, wallet_address)
       `)
       .eq('status', 'active')
       .lte('next_execution', now.toISOString());
@@ -132,12 +101,11 @@ export async function GET(request: NextRequest) {
     for (const dca of dcasToExecute) {
       try {
         // Atomic lock: set status to 'executing' only if still 'active'
-        // This prevents double execution if keeper runs twice simultaneously
         const { data: lockResult, error: lockError } = await supabase
           .from('dca_configs')
           .update({ status: 'executing', updated_at: now.toISOString() })
           .eq('id', dca.id)
-          .eq('status', 'active') // Only lock if still active (atomic check)
+          .eq('status', 'active')
           .select()
           .single();
 
@@ -166,14 +134,11 @@ export async function GET(request: NextRequest) {
         }
 
         // Decrypt session keypair
-        const user = dca.users as { wallet_address: string };
+        const user = dca.users as { id: string; wallet_address: string };
         let sessionKeypairBase64: string;
 
         try {
-          // The encrypted_data contains the session keypair encrypted with the user's wallet signature
-          // For now, we assume it's stored as base64 (in production, use proper encryption)
           sessionKeypairBase64 = dca.encrypted_data;
-
           if (!sessionKeypairBase64) {
             throw new Error('No session keypair found');
           }
@@ -182,9 +147,10 @@ export async function GET(request: NextRequest) {
           throw new Error('Failed to decrypt session keypair');
         }
 
-        // Initialize Privacy Cash client with session keypair
-        const privacyClient = await createServerPrivacyClient(rpcUrl, sessionKeypairBase64);
-        const sessionPublicKey = privacyClient.getPublicKey();
+        // Reconstruct session keypair
+        const sessionSecretKey = Buffer.from(sessionKeypairBase64, 'base64');
+        const sessionKeypair = Keypair.fromSecretKey(sessionSecretKey);
+        const sessionPublicKey = sessionKeypair.publicKey;
 
         console.log(`Executing DCA ${dca.id} for wallet ${user.wallet_address}`);
         console.log(`Session wallet: ${sessionPublicKey.toBase58()}`);
@@ -196,59 +162,7 @@ export async function GET(request: NextRequest) {
         const outputDecimals = getTokenDecimals(outputMint);
         const inputAmount = Math.floor(Number(dca.amount_per_trade) * Math.pow(10, inputDecimals));
 
-        // Check if session wallet already has enough tokens (from previous failed attempt)
-        let existingBalance = 0;
-        if (inputMint !== SOL_MINT) {
-          try {
-            const inputMintPubkey = new PublicKey(inputMint);
-            const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
-            const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
-            existingBalance = Number(tokenAccountInfo.value.amount);
-            console.log(`Existing ${inputMint === USDC_MINT ? 'USDC' : 'token'} balance in session wallet: ${tokenAccountInfo.value.uiAmount}`);
-          } catch {
-            // No existing balance
-          }
-        }
-
-        // Only withdraw if we don't have enough already
-        const minimumRequired = Math.floor(inputAmount * 0.1); // At least 10% of target
-        if (existingBalance >= minimumRequired) {
-          console.log(`Using existing balance (${existingBalance / Math.pow(10, inputDecimals)}), skipping withdrawal to save fees`);
-        } else {
-          // Step 1: Withdraw from Privacy Cash (unshield input tokens)
-          console.log(`Withdrawing ${dca.amount_per_trade} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} from Privacy Cash`);
-
-          let withdrawResult;
-          try {
-            if (inputMint === SOL_MINT) {
-              withdrawResult = await privacyClient.withdrawSOL(inputAmount, sessionPublicKey.toBase58());
-            } else if (inputMint === USDC_MINT) {
-              withdrawResult = await privacyClient.withdrawUSDC(inputAmount, sessionPublicKey.toBase58());
-            } else {
-              withdrawResult = await privacyClient.withdrawSPL(inputMint, inputAmount, sessionPublicKey.toBase58());
-            }
-            console.log(`Withdrawal tx: ${withdrawResult.tx}`);
-            console.log(`Withdrawal result:`, JSON.stringify(withdrawResult, null, 2));
-
-            // Wait for withdrawal to confirm before swapping
-            console.log('Waiting for withdrawal confirmation...');
-            await confirmTransactionPolling(connection, withdrawResult.tx, 30, 1000);
-            console.log('Withdrawal confirmed');
-          } catch (withdrawError) {
-            console.error(`Withdrawal failed for DCA ${dca.id}:`, withdrawError);
-            throw new Error(`Privacy Cash withdrawal failed: ${withdrawError instanceof Error ? withdrawError.message : 'Unknown error'}`);
-          }
-        }
-
-        // Check session wallet has enough SOL for transaction fees
-        const sessionBalance = await connection.getBalance(sessionPublicKey);
-        console.log(`Session wallet SOL balance: ${sessionBalance / 1e9} SOL`);
-
-        if (sessionBalance < 5000000) { // Less than 0.005 SOL
-          throw new Error(`Insufficient SOL for transaction fees. Session wallet has ${sessionBalance / 1e9} SOL, needs at least 0.005 SOL`);
-        }
-
-        // Check input token balance in session wallet and use actual available amount
+        // Check session wallet balance directly (no privacy withdrawal on devnet)
         let actualInputAmount = inputAmount;
         if (inputMint !== SOL_MINT) {
           try {
@@ -256,43 +170,69 @@ export async function GET(request: NextRequest) {
             const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
             const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
             const availableBalance = Number(tokenAccountInfo.value.amount);
-            console.log(`Session wallet ${inputMint === USDC_MINT ? 'USDC' : 'token'} balance: ${tokenAccountInfo.value.uiAmount}`);
+            console.log(`Session wallet balance: ${tokenAccountInfo.value.uiAmount} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'}`);
 
-            // Use whatever is available in the session wallet
             if (availableBalance < inputAmount) {
-              console.log(`Privacy Cash fees reduced balance. Expected ${dca.amount_per_trade}, have ${tokenAccountInfo.value.uiAmount}`);
+              console.log(`Expected ${dca.amount_per_trade}, have ${tokenAccountInfo.value.uiAmount}`);
 
               // Minimum viable swap: at least 0.1 USDC (100000 base units)
               if (availableBalance < 100000) {
-                throw new Error(`Balance too low after fees. Have ${tokenAccountInfo.value.uiAmount}, minimum is 0.1 USDC`);
+                throw new Error(`Balance too low. Have ${tokenAccountInfo.value.uiAmount}, minimum is 0.1 USDC`);
               }
 
               actualInputAmount = availableBalance;
-              console.log(`Using available balance: ${actualInputAmount / Math.pow(10, inputDecimals)} for swap`);
+              console.log(`Using available balance: ${actualInputAmount / Math.pow(10, inputDecimals)}`);
             }
           } catch (tokenError) {
             if ((tokenError as Error).message.includes('Balance too low') ||
                 (tokenError as Error).message.includes('Insufficient')) {
               throw tokenError;
             }
-            console.log(`Could not check token balance (ATA may not exist): ${(tokenError as Error).message}`);
+            console.log(`Could not check token balance: ${(tokenError as Error).message}`);
+            throw new Error('Session wallet has no USDC. Fund the session wallet with devnet USDC first.');
           }
         }
 
-        // Step 2: Swap via Jupiter
-        const actualInputDecimal = actualInputAmount / Math.pow(10, inputDecimals);
-        console.log(`Swapping ${actualInputDecimal} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} → ${outputMint === SOL_MINT ? 'SOL' : outputMint}`);
+        // Check session wallet has enough SOL for transaction fees
+        const sessionBalance = await connection.getBalance(sessionPublicKey);
+        console.log(`Session wallet SOL balance: ${sessionBalance / 1e9} SOL`);
+
+        if (sessionBalance < 5000000) {
+          throw new Error(`Insufficient SOL for transaction fees. Session wallet has ${sessionBalance / 1e9} SOL, needs at least 0.005 SOL`);
+        }
 
         let swapSignature: string;
         let outputAmount: number;
 
-        try {
-          // Get swap quote with actual available amount
+        // Route: GOLD → GRAIL purchase, else → Jupiter swap
+        if (outputMint === GOLD_MINT) {
+          console.log(`Routing to GRAIL for gold purchase`);
+          const result = await executeGrailPurchase({
+            cloakUserId: user.id,
+            walletAddress: user.wallet_address,
+            usdcAmount: actualInputAmount / Math.pow(10, inputDecimals),
+            sessionKeypair,
+            supabase,
+          });
+
+          swapSignature = result.txId;
+          outputAmount = result.goldAmount;
+
+          // Store gold-specific data
+          await supabase.from('executions').update({
+            gold_amount: result.goldAmount,
+            gold_price_at_execution: result.goldPrice,
+          }).eq('id', execution.id);
+        } else {
+          // Jupiter swap (existing flow)
+          const actualInputDecimal = actualInputAmount / Math.pow(10, inputDecimals);
+          console.log(`Swapping ${actualInputDecimal} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'} → ${outputMint === SOL_MINT ? 'SOL' : outputMint}`);
+
           const quote = await getQuote({
             inputMint,
             outputMint,
             amount: actualInputAmount,
-            slippageBps: 100, // 1% slippage for better success rate
+            slippageBps: 100,
           });
 
           if (!quote) {
@@ -300,39 +240,31 @@ export async function GET(request: NextRequest) {
           }
 
           outputAmount = Number(quote.outAmount);
-          console.log(`Quote received: ${inputAmount} -> ${outputAmount}`);
+          console.log(`Quote received: ${actualInputAmount} -> ${outputAmount}`);
 
-          // Get swap transaction
-          const { transaction: versionedTx, lastValidBlockHeight } = await getSwapTransaction({
+          const { transaction: versionedTx } = await getSwapTransaction({
             quoteResponse: quote,
             userPublicKey: sessionPublicKey.toBase58(),
           });
 
-          // Sign with session keypair
-          const sessionSecretKey = Buffer.from(sessionKeypairBase64, 'base64');
-          const sessionKeypair = Keypair.fromSecretKey(sessionSecretKey);
           versionedTx.sign([sessionKeypair]);
 
-          // Send with skipPreflight for faster submission
           swapSignature = await connection.sendTransaction(versionedTx, {
             skipPreflight: true,
             maxRetries: 5,
           });
 
           console.log(`Swap tx sent: ${swapSignature}`);
-
-          // Confirm using polling with block height check
           await confirmTransactionPolling(connection, swapSignature, 60, 500);
           console.log(`Swap confirmed: ${swapSignature}`);
-        } catch (swapError) {
-          console.error(`Swap failed for DCA ${dca.id}:`, swapError);
-          throw new Error(`Jupiter swap failed: ${swapError instanceof Error ? swapError.message : 'Unknown error'}`);
         }
 
-        // Output tokens stay in session wallet (user can withdraw via "Ready to Withdraw")
-        // No re-shielding - simpler flow and tokens are immediately visible
-        const outputAmountDecimal = outputAmount / Math.pow(10, outputDecimals);
-        console.log(`Swap complete. ${outputAmountDecimal} ${outputMint === SOL_MINT ? 'SOL' : 'tokens'} now in session wallet`);
+        // Output tokens stay in session wallet
+        const outputAmountDecimal = outputMint === GOLD_MINT
+          ? outputAmount // GRAIL returns gold in troy ounces already
+          : outputAmount / Math.pow(10, outputDecimals);
+
+        console.log(`Trade complete. ${outputAmountDecimal} ${outputMint === SOL_MINT ? 'SOL' : outputMint === GOLD_MINT ? 'GOLD oz' : 'tokens'}`);
 
         // Update execution with success
         await supabase
