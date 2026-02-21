@@ -28,7 +28,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
+import { TOKENS, USDC_MINT, GOLD_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
@@ -102,6 +102,9 @@ export function Dashboard() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activityPage, setActivityPage] = useState(0);
   const ACTIVITY_PAGE_SIZE = 5;
+
+  // Gold balance state
+  const [goldBalance, setGoldBalance] = useState<{ goldAmount: number; usdValue: number; goldPricePerOunce: number } | null>(null);
 
   // Setup flow states
   const [setupStep, setSetupStep] = useState<'checking' | 'fund_gas' | 'ready' | 'depositing'>('checking');
@@ -222,6 +225,26 @@ export function Dashboard() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicKey, hasStrategies]);
+
+  // Fetch gold balance
+  useEffect(() => {
+    if (!publicKey) return;
+    const fetchGold = async () => {
+      try {
+        const res = await fetch('/api/grail/balance', {
+          headers: { 'x-wallet-address': publicKey.toBase58() },
+        });
+        if (res.ok && isMounted.current) {
+          setGoldBalance(await res.json());
+        }
+      } catch (e) {
+        console.error('Failed to fetch gold balance:', e);
+      }
+    };
+    fetchGold();
+    const interval = setInterval(fetchGold, 30000);
+    return () => clearInterval(interval);
+  }, [publicKey]);
 
   const fetchRecentActivity = async () => {
     if (!publicKey || !isMounted.current) return;
@@ -847,6 +870,32 @@ export function Dashboard() {
             </div>
           )}
         </section>
+
+        {/* Gold Balance Section */}
+        {goldBalance && goldBalance.goldAmount > 0 && (
+          <section className="mb-14">
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-sm text-muted-foreground">Gold Holdings</p>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-medium">GRAIL</span>
+            </div>
+            <div className="p-5 rounded-lg bg-card border border-amber-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-3xl font-light tracking-tight text-amber-400">
+                    {goldBalance.goldAmount.toFixed(4)} <span className="text-lg text-amber-400/70">oz</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    ${goldBalance.usdValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Price / oz</p>
+                  <p className="text-sm text-mono">${goldBalance.goldPricePerOunce.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Strategies Section */}
         <section className="mb-14">

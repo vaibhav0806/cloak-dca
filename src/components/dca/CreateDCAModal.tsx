@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -24,12 +24,12 @@ import {
   SUPPORTED_INPUT_TOKENS,
   SUPPORTED_OUTPUT_TOKENS,
   FREQUENCY_OPTIONS,
+  GOLD_MINT,
 } from '@/lib/solana/constants';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo, DCAConfig } from '@/types';
 import { analytics } from '@/lib/analytics';
 
-// Privacy Cash has a minimum withdrawal of ~1 USDC to prevent correlation attacks
 const MIN_AMOUNT_PER_TRADE = 1;
 
 export function CreateDCAModal() {
@@ -44,6 +44,33 @@ export function CreateDCAModal() {
   const [frequencyHours, setFrequencyHours] = useState(24);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [goldPrice, setGoldPrice] = useState<number | null>(null);
+
+  const isGoldOutput = outputToken?.mint === GOLD_MINT;
+
+  // Fetch gold price when GOLD is selected
+  useEffect(() => {
+    if (!isGoldOutput) {
+      setGoldPrice(null);
+      return;
+    }
+
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch('/api/grail/price');
+        if (res.ok) {
+          const data = await res.json();
+          setGoldPrice(data.price);
+        }
+      } catch (err) {
+        console.error('Failed to fetch gold price:', err);
+      }
+    };
+
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [isGoldOutput]);
 
   const inputBalance = inputToken
     ? balances.find((b) => b.token.mint === inputToken.mint)?.amount || 0
@@ -56,6 +83,14 @@ export function CreateDCAModal() {
   const estimatedDuration = totalTrades > 0
     ? `${Math.ceil((totalTrades * frequencyHours) / 24)} days`
     : '—';
+
+  const estimatedGoldPerTrade = isGoldOutput && goldPrice && amountPerTrade
+    ? parseFloat(amountPerTrade) / goldPrice
+    : null;
+
+  const totalEstimatedGold = isGoldOutput && goldPrice && totalAmount
+    ? parseFloat(totalAmount) / goldPrice
+    : null;
 
   // Calculate if this new DCA would cause underfunding
   const activeConfigs = getActiveConfigs();
@@ -182,6 +217,9 @@ export function CreateDCAModal() {
                       <div className="flex items-center gap-2">
                         {token.logoURI && <img src={token.logoURI} alt="" className="h-4 w-4 rounded-full" />}
                         {token.symbol}
+                        {token.isGrailAsset && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">GRAIL</span>
+                        )}
                       </div>
                     </SelectItem>
                   ))}
@@ -189,6 +227,26 @@ export function CreateDCAModal() {
               </Select>
             </div>
           </div>
+
+          {/* Gold Price Display */}
+          {isGoldOutput && (
+            <div className="p-3 bg-amber-500/5 rounded-md border border-amber-500/20">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-amber-400/80">Gold Price</span>
+                <span className="text-sm text-mono text-amber-400">
+                  {goldPrice ? `$${goldPrice.toLocaleString('en-US', { minimumFractionDigits: 2 })} / oz` : 'Loading...'}
+                </span>
+              </div>
+              {estimatedGoldPerTrade && (
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-xs text-amber-400/80">Est. per trade</span>
+                  <span className="text-sm text-mono text-amber-400">
+                    ~{estimatedGoldPerTrade.toFixed(6)} oz
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Amounts */}
           <div className="grid grid-cols-2 gap-4">
@@ -246,6 +304,18 @@ export function CreateDCAModal() {
                   <p className="text-xs text-muted-foreground mb-1">Duration</p>
                   <p className="text-mono">{estimatedDuration}</p>
                 </div>
+                {totalEstimatedGold && (
+                  <>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Est. Total Gold</p>
+                      <p className="text-mono text-amber-400">{totalEstimatedGold.toFixed(4)} oz</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Per Trade</p>
+                      <p className="text-mono text-amber-400">{estimatedGoldPerTrade?.toFixed(6)} oz</p>
+                    </div>
+                  </>
+                )}
               </div>
               {wouldBeUnderfunded && (
                 <div className="flex items-center gap-2 text-xs text-orange-400/90 mt-3 pt-3 border-t border-border/50">
