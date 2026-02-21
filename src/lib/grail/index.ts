@@ -76,7 +76,15 @@ class GrailService {
   async getGoldPrice(): Promise<GoldPriceResponse> {
     const res = await fetch(`${this.baseUrl}/api/trading/gold/price`);
     if (!res.ok) throw new Error(`Failed to get gold price: ${res.status}`);
-    return res.json();
+    const json = await res.json();
+    // GRAIL wraps response in { success, data: { price, unit, currency, timestamp } }
+    const data = json.data || json;
+    return {
+      price: parseFloat(data.price),
+      unit: data.unit,
+      currency: data.currency,
+      timestamp: data.timestamp,
+    };
   }
 
   async estimateBuy(goldAmount: number): Promise<EstimateResponse> {
