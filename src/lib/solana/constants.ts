@@ -1,6 +1,7 @@
 import { PublicKey } from '@solana/web3.js';
+import type { TokenInfo } from '@/types';
 
-export const TOKENS = {
+export const TOKENS: Record<string, TokenInfo> = {
   SOL: {
     symbol: 'SOL',
     name: 'Solana',
@@ -10,43 +11,33 @@ export const TOKENS = {
   },
   USDC: {
     symbol: 'USDC',
-    name: 'USD Coin',
-    mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    name: 'USD Coin (Devnet)',
+    mint: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
     decimals: 6,
     logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
   },
-  USDT: {
-    symbol: 'USDT',
-    name: 'Tether USD',
-    mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-    decimals: 6,
-    logoURI: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB/logo.svg',
+  GOLD: {
+    symbol: 'GOLD',
+    name: 'GRAIL Gold',
+    mint: 'GoLDYYajoSPiRMbRs6MXKBPV8MAfdosfYfG95fqsmawt',
+    decimals: 9,
+    logoURI: '/gold-icon.png',
+    isGrailAsset: true,
   },
-  cbBTC: {
-    symbol: 'cbBTC',
-    name: 'Coinbase Wrapped BTC',
-    mint: 'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij',
-    decimals: 8,
-    logoURI: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1.png',
-  },
-  ZEC: {
-    symbol: 'ZEC',
-    name: 'Zcash',
-    mint: 'A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS',
-    decimals: 8,
-    logoURI: 'https://s2.coinmarketcap.com/static/img/coins/64x64/1437.png',
-  },
-} as const;
+};
 
-export const SUPPORTED_INPUT_TOKENS = [TOKENS.USDC, TOKENS.USDT];
-export const SUPPORTED_OUTPUT_TOKENS = [TOKENS.SOL, TOKENS.cbBTC, TOKENS.ZEC];
+export const SUPPORTED_INPUT_TOKENS: TokenInfo[] = [TOKENS.USDC];
+export const SUPPORTED_OUTPUT_TOKENS: TokenInfo[] = [TOKENS.SOL, TOKENS.GOLD];
 
 // Mint addresses for easy reference
 export const SOL_MINT = TOKENS.SOL.mint;
 export const USDC_MINT = TOKENS.USDC.mint;
-export const USDT_MINT = TOKENS.USDT.mint;
-export const CBBTC_MINT = TOKENS.cbBTC.mint;
-export const ZEC_MINT = TOKENS.ZEC.mint;
+export const GOLD_MINT = TOKENS.GOLD.mint;
+
+// Legacy mainnet mints (unused on devnet, kept for module compat)
+export const USDT_MINT = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+export const CBBTC_MINT = 'cbbtcf3aa214zXHbiAZQwf4122FBYbraNdFqgw4iMij';
+export const ZEC_MINT = 'A7bdiYdS5GjqGFtxf17ppRHtDKPkkRqbKtR27dxvQXaS';
 
 export const DEVNET_TOKENS = {
   SOL: {

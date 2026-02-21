@@ -50,6 +50,7 @@ export interface TokenInfo {
   mint: string;
   decimals: number;
   logoURI?: string;
+  isGrailAsset?: boolean;
 }
 
 export interface ShieldedBalance {
