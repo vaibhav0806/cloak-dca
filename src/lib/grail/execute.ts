@@ -11,7 +11,7 @@ import { grailService } from './index';
 import { GRAIL_CONFIG } from './config';
 import { ensureGrailUser } from './users';
 import { USDC_MINT } from '@/lib/solana/constants';
-import { getConnection } from '@/lib/solana/connection';
+import { getDevnetConnection } from '@/lib/solana/connection';
 
 interface GrailPurchaseResult {
   txId: string;
@@ -44,7 +44,7 @@ export async function executeGrailPurchase({
   sessionKeypair: Keypair;
   supabase: SupabaseClient;
 }): Promise<GrailPurchaseResult> {
-  const connection = getConnection();
+  const connection = getDevnetConnection();
 
   // Step 1: Ensure GRAIL user exists
   const grailUserId = await ensureGrailUser(cloakUserId, walletAddress, supabase);

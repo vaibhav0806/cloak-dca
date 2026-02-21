@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
-import { getConnection } from '@/lib/solana/connection';
+import { getDevnetConnection } from '@/lib/solana/connection';
 import { addHours } from 'date-fns';
 import { getQuote, getSwapTransaction } from '@/lib/jupiter';
 import { USDC_MINT, SOL_MINT, GOLD_MINT } from '@/lib/solana/constants';
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    const connection = getConnection();
+    const connection = getDevnetConnection();
     const now = new Date();
 
     // Get DCAs that are due for execution

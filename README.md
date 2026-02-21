@@ -115,6 +115,7 @@ SUPABASE_SERVICE_KEY=your_service_key
 
 # Solana RPC
 NEXT_PUBLIC_HELIUS_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your_key
+NEXT_PUBLIC_HELIUS_RPC_URL_DEVNET=https://devnet.helius-rpc.com/?api-key=your_key
 
 # Keeper Authentication
 CRON_SECRET=your_random_secret
