@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useShieldedBalance } from '@/hooks/useShieldedBalance';
 import { useDCAConfigs } from '@/hooks/useDCAConfigs';
 import { useAppStore } from '@/store';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,6 @@ import { CreateDCAModal } from '@/components/dca/CreateDCAModal';
 import {
   Plus,
   ArrowDownToLine,
-  ArrowUpFromLine,
   ArrowLeftRight,
   Check,
   X,
@@ -23,17 +21,17 @@ import {
   Wallet,
   AlertCircle,
   ChevronRight,
-  Shield,
   Settings,
   Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
-import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
+import { getExplorerUrl, getDevnetConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
 import { SessionWallet } from './SessionWallet';
 import { getAssociatedTokenAddress, createTransferInstruction, createAssociatedTokenAccountInstruction, getAccount, TokenAccountNotFoundError } from '@solana/spl-token';
+import { initializePrivacyClient, resetPrivacyClient, privacyClient } from '@/lib/privacy';
 
 function getTokenInfo(mint: string) {
   const token = Object.values(TOKENS).find((t) => t.mint === mint);
@@ -41,36 +39,24 @@ function getTokenInfo(mint: string) {
 }
 
 // Calculate which DCAs will be funded based on available balance
-// Returns a map of DCA id -> { funded: boolean, position: number }
 function calculateDCAFundingStatus(
   activeConfigs: DCAConfig[],
   totalBalance: number
 ): Map<string, { funded: boolean; position: number; shortfall: number }> {
   const result = new Map<string, { funded: boolean; position: number; shortfall: number }>();
-
   if (activeConfigs.length === 0) return result;
 
-  // Sort by next execution time (earliest first)
   const sortedConfigs = [...activeConfigs]
     .filter(c => c.status === 'active' || c.status === 'executing')
     .sort((a, b) => new Date(a.next_execution).getTime() - new Date(b.next_execution).getTime());
 
   let remainingBalance = totalBalance;
-
   sortedConfigs.forEach((config, index) => {
     const requiredAmount = config.amount_per_trade;
     const funded = remainingBalance >= requiredAmount;
     const shortfall = funded ? 0 : requiredAmount - remainingBalance;
-
-    result.set(config.id, {
-      funded,
-      position: index + 1,
-      shortfall,
-    });
-
-    if (funded) {
-      remainingBalance -= requiredAmount;
-    }
+    result.set(config.id, { funded, position: index + 1, shortfall });
+    if (funded) remainingBalance -= requiredAmount;
   });
 
   return result;
@@ -78,19 +64,14 @@ function calculateDCAFundingStatus(
 
 
 export function Dashboard() {
-  const { publicKey, sendTransaction } = useWallet();
-  const { balances, isLoading: balancesLoading, hasFetched: hasFetchedBalances, fetchBalances, deposit, withdraw, getSessionPublicKey, isInitialized } = useShieldedBalance();
+  const { publicKey, sendTransaction, signTransaction, signAllTransactions, signMessage, connected } = useWallet();
   const { isLoading: configsLoading, getActiveConfigs, getPausedConfigs, pauseDCA, resumeDCA, cancelDCA } = useDCAConfigs();
   const { setCreateModalOpen } = useAppStore();
 
   const [expandedStrategy, setExpandedStrategy] = useState<string | null>(null);
   const [showDeposit, setShowDeposit] = useState(false);
-  const [showWithdraw, setShowWithdraw] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawToken, setWithdrawToken] = useState('');
   const [isDepositing, setIsDepositing] = useState(false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [sessionKey, setSessionKey] = useState<string | null>(null);
   const [sessionBalance, setSessionBalance] = useState<number | null>(null);
   const [sessionUsdcBalance, setSessionUsdcBalance] = useState<number | null>(null);
@@ -102,82 +83,87 @@ export function Dashboard() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [activityPage, setActivityPage] = useState(0);
   const ACTIVITY_PAGE_SIZE = 5;
+  const [depositError, setDepositError] = useState<string | null>(null);
 
   // Gold balance state
   const [goldBalance, setGoldBalance] = useState<{ goldAmount: number; usdValue: number; goldPricePerOunce: number } | null>(null);
 
-  // Setup flow states
-  const [setupStep, setSetupStep] = useState<'checking' | 'fund_gas' | 'ready' | 'depositing'>('checking');
-  const [setupError, setSetupError] = useState<string | null>(null);
-
   // Track mounted state
   const isMounted = useRef(true);
+  const hasInitializedPrivacy = useRef(false);
   useEffect(() => {
     isMounted.current = true;
     return () => { isMounted.current = false; };
   }, []);
 
+  // Initialize privacy client for session key derivation (we still need the session keypair logic)
+  useEffect(() => {
+    if (connected && publicKey && signTransaction && signAllTransactions && signMessage && !hasInitializedPrivacy.current) {
+      try {
+        initializePrivacyClient({
+          connection: getDevnetConnection(),
+          wallet: { publicKey, signTransaction, signAllTransactions, signMessage },
+        });
+        hasInitializedPrivacy.current = true;
+      } catch (e) {
+        console.error('Failed to init privacy client for session key:', e);
+      }
+    }
+    if (!connected && hasInitializedPrivacy.current) {
+      hasInitializedPrivacy.current = false;
+      resetPrivacyClient();
+    }
+  }, [connected, publicKey, signTransaction, signAllTransactions, signMessage]);
+
   const activeConfigs = getActiveConfigs();
   const pausedConfigs = getPausedConfigs();
   const allStrategies = [...activeConfigs, ...pausedConfigs];
-
-  const totalShielded = balances.reduce((acc, b) => acc + (b.usdValue || 0), 0);
-  const hasShieldedBalance = totalShielded > 0;
   const hasStrategies = allStrategies.length > 0;
-  const sessionFunded = sessionBalance !== null && sessionBalance >= 0.005;
 
-  // Calculate DCA funding status
-  const dcaFundingStatus = calculateDCAFundingStatus(activeConfigs, totalShielded);
+  const sessionFunded = sessionBalance !== null && sessionBalance >= 0.005;
+  const availableUsdcBalance = sessionUsdcBalance || 0;
+
+  // Calculate DCA funding status based on session USDC balance
+  const dcaFundingStatus = calculateDCAFundingStatus(activeConfigs, availableUsdcBalance);
   const totalDCARequirement = activeConfigs
     .filter(c => c.status === 'active' || c.status === 'executing')
     .reduce((sum, config) => sum + config.amount_per_trade, 0);
-  const hasUnderfundedDCAs = totalShielded < totalDCARequirement && activeConfigs.length > 0;
-  const fundingShortfall = Math.max(0, totalDCARequirement - totalShielded);
+  const hasUnderfundedDCAs = availableUsdcBalance < totalDCARequirement && activeConfigs.length > 0;
+  const fundingShortfall = Math.max(0, totalDCARequirement - availableUsdcBalance);
 
-  // Determine if user needs onboarding
-  const needsOnboarding = !hasShieldedBalance && !hasStrategies;
-
-  // Fetch session key and balance
+  // Fetch session key and balances from devnet
   useEffect(() => {
-    if (isInitialized && !sessionKey) {
-      getSessionPublicKey().then(async (key) => {
+    if (!hasInitializedPrivacy.current || sessionKey) return;
+
+    privacyClient.getSessionPublicKey().then(async (key) => {
+      if (!isMounted.current) return;
+      setSessionKey(key);
+      try {
+        const connection = getDevnetConnection();
+        const balance = await connection.getBalance(new PublicKey(key));
         if (!isMounted.current) return;
-        setSessionKey(key);
-        try {
-          const connection = getConnection();
-          const balance = await connection.getBalance(new PublicKey(key));
-          if (!isMounted.current) return;
-          setSessionBalance(balance / LAMPORTS_PER_SOL);
+        setSessionBalance(balance / LAMPORTS_PER_SOL);
 
-          // Check USDC balance
-          const usdcMint = new PublicKey(USDC_MINT);
-          const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(key));
-          const accountInfo = await connection.getAccountInfo(ata);
-          if (accountInfo && isMounted.current) {
-            const data = accountInfo.data;
-            const usdcBalance = data.readBigUInt64LE(64);
-            setSessionUsdcBalance(Number(usdcBalance) / 1e6);
-          } else if (isMounted.current) {
-            setSessionUsdcBalance(0);
-          }
-
-          // Determine setup step
-          if (balance >= 0.005 * LAMPORTS_PER_SOL) {
-            setSetupStep('ready');
-          } else {
-            setSetupStep('fund_gas');
-          }
-        } catch (e) {
-          console.error('Failed to fetch session balance:', e);
-          if (isMounted.current) {
-            setSessionBalance(0);
-            setSessionUsdcBalance(0);
-            setSetupStep('fund_gas');
-          }
+        // Check USDC balance
+        const usdcMint = new PublicKey(USDC_MINT);
+        const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(key));
+        const accountInfo = await connection.getAccountInfo(ata);
+        if (accountInfo && isMounted.current) {
+          const data = accountInfo.data;
+          const usdcBalance = data.readBigUInt64LE(64);
+          setSessionUsdcBalance(Number(usdcBalance) / 1e6);
+        } else if (isMounted.current) {
+          setSessionUsdcBalance(0);
         }
-      }).catch(console.error);
-    }
-  }, [isInitialized, sessionKey, getSessionPublicKey]);
+      } catch (e) {
+        console.error('Failed to fetch session balance:', e);
+        if (isMounted.current) {
+          setSessionBalance(0);
+          setSessionUsdcBalance(0);
+        }
+      }
+    }).catch(console.error);
+  }, [connected, hasInitializedPrivacy.current, sessionKey]);
 
   // Refresh session balance periodically
   useEffect(() => {
@@ -185,12 +171,11 @@ export function Dashboard() {
     const interval = setInterval(async () => {
       if (!isMounted.current) return;
       try {
-        const connection = getConnection();
+        const connection = getDevnetConnection();
         const balance = await connection.getBalance(new PublicKey(sessionKey));
         if (!isMounted.current) return;
         setSessionBalance(balance / LAMPORTS_PER_SOL);
 
-        // Also refresh USDC balance
         const usdcMint = new PublicKey(USDC_MINT);
         const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(sessionKey));
         const accountInfo = await connection.getAccountInfo(ata);
@@ -199,30 +184,16 @@ export function Dashboard() {
           const usdcBalance = data.readBigUInt64LE(64);
           setSessionUsdcBalance(Number(usdcBalance) / 1e6);
         }
-
-        // Update setup step if funded
-        if (balance >= 0.005 * LAMPORTS_PER_SOL && setupStep === 'fund_gas') {
-          setSetupStep('ready');
-        }
       } catch (e) {
         console.error('Failed to refresh session balance:', e);
       }
     }, 10000);
     return () => clearInterval(interval);
-  }, [sessionKey, setupStep]);
+  }, [sessionKey]);
 
-  // Sync setupStep with sessionFunded - if SOL drops below threshold, show fund_gas step
+  // Fetch recent activity
   useEffect(() => {
-    if (sessionBalance !== null && setupStep === 'ready' && !sessionFunded) {
-      setSetupStep('fund_gas');
-    }
-  }, [sessionBalance, setupStep, sessionFunded]);
-
-  // Fetch recent executions and transactions
-  useEffect(() => {
-    if (publicKey) {
-      fetchRecentActivity();
-    }
+    if (publicKey) fetchRecentActivity();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [publicKey, hasStrategies]);
 
@@ -250,7 +221,6 @@ export function Dashboard() {
     if (!publicKey || !isMounted.current) return;
     const walletAddress = publicKey.toBase58();
 
-    // Fetch wallet transactions (deposits/withdrawals)
     try {
       const txResponse = await fetch('/api/transactions', {
         headers: { 'x-wallet-address': walletAddress },
@@ -263,7 +233,6 @@ export function Dashboard() {
       console.error('Error fetching wallet transactions:', error);
     }
 
-    // Fetch trade executions from all DCAs (including completed/cancelled)
     try {
       const configsResponse = await fetch('/api/dca/list', {
         headers: { 'x-wallet-address': walletAddress },
@@ -301,175 +270,91 @@ export function Dashboard() {
     }
   };
 
+  // Devnet deposit: transfer USDC from main wallet → session wallet (no privacy shielding)
   const handleDeposit = async () => {
     if (!depositAmount || isNaN(Number(depositAmount)) || !publicKey || !sessionKey) return;
 
-    // Check if session wallet needs gas
-    if (!sessionFunded) {
-      console.log('Session wallet needs gas. Current balance:', sessionBalance, 'SOL, required: 0.005 SOL');
-      setSetupStep('fund_gas');
-      return;
-    }
-
     setIsDepositing(true);
-    setSetupStep('depositing');
     setDepositSuccess(false);
-    setSetupError(null);
+    setDepositError(null);
 
     try {
-      const connection = getConnection();
+      const connection = getDevnetConnection();
       const usdcMint = new PublicKey(USDC_MINT);
       const sessionPublicKey = new PublicKey(sessionKey);
       const amount = Number(depositAmount);
-      const amountInBaseUnits = Math.floor(amount * 1e6); // USDC has 6 decimals
+      const amountInBaseUnits = Math.floor(amount * 1e6);
 
-      // Get ATAs
       const sourceAta = await getAssociatedTokenAddress(usdcMint, publicKey);
       const destAta = await getAssociatedTokenAddress(usdcMint, sessionPublicKey);
 
-      // Check existing balance in session wallet
-      let existingBalance = 0;
-      try {
-        const accountInfo = await connection.getAccountInfo(destAta);
-        if (accountInfo) {
-          existingBalance = Number(accountInfo.data.readBigUInt64LE(64)) / 1e6;
-          console.log(`Session wallet already has ${existingBalance} USDC`);
-        }
-      } catch {
-        // No existing balance
-      }
-
-      // Step 1: Transfer USDC from main wallet to session wallet
-      console.log(`Transferring ${amount} USDC from main wallet to session wallet...`);
-
       const transaction = new Transaction();
 
-      // Check if destination ATA exists, if not create it
+      // Create destination ATA if needed
       try {
         await getAccount(connection, destAta);
       } catch (error) {
         if (error instanceof TokenAccountNotFoundError) {
-          console.log('Creating USDC token account for session wallet...');
           transaction.add(
-            createAssociatedTokenAccountInstruction(
-              publicKey, // payer
-              destAta,   // ata
-              sessionPublicKey, // owner
-              usdcMint   // mint
-            )
+            createAssociatedTokenAccountInstruction(publicKey, destAta, sessionPublicKey, usdcMint)
           );
         } else {
           throw error;
         }
       }
 
-      // Add transfer instruction
       transaction.add(
-        createTransferInstruction(
-          sourceAta,
-          destAta,
-          publicKey,
-          amountInBaseUnits
-        )
+        createTransferInstruction(sourceAta, destAta, publicKey, amountInBaseUnits)
       );
 
-      // Get recent blockhash
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      // Sign and send transaction using wallet adapter
       const transferSig = await sendTransaction(transaction, connection);
-      console.log(`USDC transfer signature: ${transferSig}`);
+      console.log(`USDC transfer: ${transferSig}`);
 
-      // Wait for confirmation with longer timeout
-      console.log('Waiting for transfer confirmation...');
       const confirmation = await connection.confirmTransaction({
-        signature: transferSig,
-        blockhash,
-        lastValidBlockHeight,
+        signature: transferSig, blockhash, lastValidBlockHeight,
       }, 'confirmed');
 
       if (confirmation.value.err) {
         throw new Error(`Transfer failed: ${JSON.stringify(confirmation.value.err)}`);
       }
-      console.log('USDC transfer confirmed');
 
-      // Step 2: Wait a bit and verify USDC arrived in session wallet
-      console.log('Verifying USDC balance in session wallet...');
+      // Verify balance arrived
       await new Promise(resolve => setTimeout(resolve, 2000));
-
-      let sessionUsdcAmount = 0;
-      let retries = 5;
-      while (retries > 0) {
+      let verified = false;
+      for (let i = 0; i < 5; i++) {
         try {
           const accountInfo = await connection.getAccountInfo(destAta);
           if (accountInfo) {
-            sessionUsdcAmount = Number(accountInfo.data.readBigUInt64LE(64)) / 1e6;
-            console.log(`Session wallet USDC balance: ${sessionUsdcAmount}`);
-            if (sessionUsdcAmount >= amount * 0.99) { // Allow 1% tolerance
+            const newBalance = Number(accountInfo.data.readBigUInt64LE(64)) / 1e6;
+            if (newBalance >= amount * 0.99) {
+              setSessionUsdcBalance(newBalance);
+              verified = true;
               break;
             }
           }
-        } catch (e) {
-          console.log('Waiting for token account...', e);
-        }
-        retries--;
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+        } catch { /* retry */ }
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
 
-      if (sessionUsdcAmount < amount * 0.99) {
-        throw new Error(`Transfer may have failed. Expected ${amount} USDC but found ${sessionUsdcAmount.toFixed(2)} USDC in session wallet. Please check your session wallet balance.`);
+      if (!verified) {
+        throw new Error('Transfer sent but balance not yet confirmed. Check your session wallet.');
       }
-
-      // Step 3: Deposit ALL USDC from session wallet into the privacy pool
-      // Pass depositAll=true to ensure we deposit everything (including any leftover from previous attempts)
-      console.log(`Depositing all USDC (at least ${amount}) into privacy pool...`);
-      const result = await deposit(USDC_MINT, amount, true);
 
       if (!isMounted.current) return;
       setDepositAmount('');
       setShowDeposit(false);
       setDepositSuccess(true);
-      setDepositTx(result?.signature || null);
-      setSetupStep('ready');
-
-      // Refresh activity immediately, then balances with delays
+      setDepositTx(transferSig);
       fetchRecentActivity();
-
-      const delays = [3000, 5000, 8000];
-      for (const delay of delays) {
-        if (!isMounted.current) return;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        if (!isMounted.current) return;
-        await fetchBalances(true);
-      }
     } catch (error) {
       console.error('Deposit failed:', error);
-      setSetupError(error instanceof Error ? error.message : 'Deposit failed');
-      setSetupStep('ready');
+      if (isMounted.current) setDepositError(error instanceof Error ? error.message : 'Deposit failed');
     } finally {
       if (isMounted.current) setIsDepositing(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    if (!withdrawAmount || !withdrawToken || !publicKey) return;
-    setIsWithdrawing(true);
-    try {
-      await withdraw(withdrawToken, Number(withdrawAmount), publicKey.toBase58());
-      if (!isMounted.current) return;
-      setWithdrawAmount('');
-      setWithdrawToken('');
-      setShowWithdraw(false);
-      fetchBalances(true);
-      fetchRecentActivity();
-    } catch (error) {
-      console.error('Withdraw failed:', error);
-    } finally {
-      if (isMounted.current) setIsWithdrawing(false);
     }
   };
 
@@ -481,8 +366,25 @@ export function Dashboard() {
     }
   };
 
-  // Loading state
-  if (!hasFetchedBalances || sessionBalance === null) {
+  const refreshBalances = async () => {
+    if (!sessionKey) return;
+    try {
+      const connection = getDevnetConnection();
+      const balance = await connection.getBalance(new PublicKey(sessionKey));
+      setSessionBalance(balance / LAMPORTS_PER_SOL);
+      const usdcMint = new PublicKey(USDC_MINT);
+      const ata = await getAssociatedTokenAddress(usdcMint, new PublicKey(sessionKey));
+      const accountInfo = await connection.getAccountInfo(ata);
+      if (accountInfo) {
+        setSessionUsdcBalance(Number(accountInfo.data.readBigUInt64LE(64)) / 1e6);
+      }
+    } catch (e) {
+      console.error('Failed to refresh:', e);
+    }
+  };
+
+  // Loading state — just wait for session balance
+  if (sessionBalance === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="relative">
@@ -493,45 +395,43 @@ export function Dashboard() {
     );
   }
 
-  // New user onboarding - simplified one-step flow
+  // Onboarding for new users: fund session wallet + deposit USDC
+  const needsOnboarding = availableUsdcBalance === 0 && !hasStrategies;
+  const needsGas = !sessionFunded;
+
   if (needsOnboarding) {
     return (
       <div className="min-h-screen pt-24 pb-20">
         <div className="max-w-xl mx-auto px-6">
-          {/* Header */}
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/20 mb-6">
-              <Shield className="h-4 w-4 text-accent" />
-              <span className="text-sm text-accent">Private DCA</span>
+              <Wallet className="h-4 w-4 text-accent" />
+              <span className="text-sm text-accent">Gold DCA</span>
             </div>
-            <h1 className="text-3xl font-light mb-3">Start Accumulating Privately</h1>
+            <h1 className="text-3xl font-light mb-3">Start Accumulating</h1>
             <p className="text-muted-foreground">
-              Deposit funds to begin automated, untraceable dollar-cost averaging.
+              Fund your session wallet with USDC to begin automated dollar-cost averaging into gold and SOL.
             </p>
           </div>
 
-          {/* Main Card */}
           <div className="rounded-xl bg-card border border-border overflow-hidden">
-            {/* Gas funding step */}
-            {setupStep === 'fund_gas' && (
+            {/* Step 1: Gas if needed */}
+            {needsGas ? (
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 rounded-lg bg-accent/10">
                     <Wallet className="h-5 w-5 text-accent" />
                   </div>
                   <div>
-                    <h2 className="font-medium">One-time Setup</h2>
-                    <p className="text-sm text-muted-foreground">Send ~0.01 SOL for transaction fees</p>
+                    <h2 className="font-medium">Fund Gas</h2>
+                    <p className="text-sm text-muted-foreground">Send ~0.01 SOL to your session wallet for tx fees</p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-lg bg-muted/50 mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Send SOL to this address</span>
-                    <button
-                      onClick={copySessionKey}
-                      className="text-xs text-accent hover:text-accent/80 flex items-center gap-1"
-                    >
+                    <span className="text-xs text-muted-foreground">Session wallet address</span>
+                    <button onClick={copySessionKey} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1">
                       {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -541,35 +441,20 @@ export function Dashboard() {
 
                 <div className="flex items-center justify-between p-4 rounded-lg border border-border mb-4">
                   <div>
-                    <p className="text-xs text-muted-foreground">Current Balance</p>
+                    <p className="text-xs text-muted-foreground">SOL Balance</p>
                     <p className="text-lg font-medium text-mono">{sessionBalance?.toFixed(4) || '0'} SOL</p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      if (sessionKey) {
-                        const connection = getConnection();
-                        const balance = await connection.getBalance(new PublicKey(sessionKey));
-                        setSessionBalance(balance / LAMPORTS_PER_SOL);
-                        if (balance >= 0.005 * LAMPORTS_PER_SOL) {
-                          setSetupStep('ready');
-                        }
-                      }
-                    }}
-                  >
+                  <Button variant="ghost" size="sm" onClick={refreshBalances}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  This SOL covers gas fees for your automatic DCA trades. You only need to do this once.
+                  On devnet, use <code className="text-accent">solana airdrop 1 {sessionKey?.slice(0, 8)}... --url devnet</code>
                 </p>
               </div>
-            )}
-
-            {/* Ready to deposit */}
-            {setupStep === 'ready' && (
+            ) : (
+              /* Step 2: Deposit USDC */
               <div className="p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 rounded-lg bg-accent/10">
@@ -577,19 +462,44 @@ export function Dashboard() {
                   </div>
                   <div>
                     <h2 className="font-medium">Deposit USDC</h2>
-                    <p className="text-sm text-muted-foreground">Add funds to your private balance</p>
+                    <p className="text-sm text-muted-foreground">Transfer USDC from your wallet to the session wallet</p>
                   </div>
                 </div>
 
-                {setupError && (
+                {depositError && (
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-4 flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                    <p className="text-sm text-destructive">{setupError}</p>
+                    <p className="text-sm text-destructive">{depositError}</p>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div>
+                {depositSuccess ? (
+                  <div className="text-center py-4">
+                    <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                      <Check className="h-6 w-6 text-green-500" />
+                    </div>
+                    <h2 className="font-medium mb-2">USDC Deposited!</h2>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Session wallet funded. Create a DCA strategy to start.
+                    </p>
+                    {depositTx && (
+                      <a
+                        href={getExplorerUrl(depositTx)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm text-accent hover:underline mb-4"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View transaction
+                      </a>
+                    )}
+                    <Button onClick={() => setCreateModalOpen(true)} className="w-full gap-2">
+                      <Plus className="h-4 w-4" />
+                      Create DCA Strategy
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                     <input
                       type="number"
                       placeholder="Amount (USDC)"
@@ -598,86 +508,49 @@ export function Dashboard() {
                       className="w-full px-4 py-3 bg-background border border-border rounded-lg text-mono text-lg"
                       autoFocus
                     />
+
+                    <div className="flex gap-2">
+                      {[5, 10, 20, 50].map((amount) => (
+                        <button
+                          key={amount}
+                          onClick={() => setDepositAmount(amount.toString())}
+                          className="flex-1 py-2 text-sm rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                        >
+                          ${amount}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button
+                      onClick={handleDeposit}
+                      disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
+                      className="w-full"
+                    >
+                      {isDepositing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Transferring...
+                        </>
+                      ) : (
+                        'Deposit USDC'
+                      )}
+                    </Button>
+
+                    <p className="text-xs text-muted-foreground text-center">
+                      USDC is transferred from your main wallet to the session wallet for DCA execution.
+                    </p>
                   </div>
-
-                  {/* Quick amounts */}
-                  <div className="flex gap-2">
-                    {[10, 50, 100, 500].map((amount) => (
-                      <button
-                        key={amount}
-                        onClick={() => setDepositAmount(amount.toString())}
-                        className="flex-1 py-2 text-sm rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                      >
-                        ${amount}
-                      </button>
-                    ))}
-                  </div>
-
-                  <Button
-                    onClick={handleDeposit}
-                    disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
-                    className="w-full"
-                  >
-                    {isDepositing ? 'Depositing...' : 'Deposit & Shield'}
-                  </Button>
-
-                  <p className="text-xs text-muted-foreground text-center">
-                    Your funds are shielded into a private pool, making your DCA trades untraceable.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Depositing state */}
-            {setupStep === 'depositing' && (
-              <div className="p-6 text-center">
-                <div className="relative w-12 h-12 mx-auto mb-4">
-                  <div className="absolute inset-0 rounded-full border-2 border-muted" />
-                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin" />
-                </div>
-                <h2 className="font-medium mb-2">Shielding Your Funds</h2>
-                <p className="text-sm text-muted-foreground">
-                  This may take a moment while the privacy proof is generated...
-                </p>
-              </div>
-            )}
-
-            {/* Success */}
-            {depositSuccess && (
-              <div className="p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-6 w-6 text-green-500" />
-                </div>
-                <h2 className="font-medium mb-2">Deposit Successful!</h2>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Your funds are now private. Create a DCA strategy to start accumulating.
-                </p>
-                {depositTx && (
-                  <a
-                    href={`https://solscan.io/tx/${depositTx}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-accent hover:underline mb-6"
-                  >
-                    <ExternalLink className="h-3.5 w-3.5" />
-                    View transaction
-                  </a>
                 )}
-                <Button onClick={() => setCreateModalOpen(true)} className="w-full gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create DCA Strategy
-                </Button>
               </div>
             )}
           </div>
 
-          {/* How it works */}
           <div className="mt-10 text-center">
             <p className="text-sm text-muted-foreground mb-4">How it works</p>
             <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
               <div className="text-center">
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto mb-2">1</div>
-                <span>Deposit</span>
+                <span>Fund</span>
               </div>
               <ChevronRight className="h-4 w-4" />
               <div className="text-center">
@@ -697,7 +570,7 @@ export function Dashboard() {
     );
   }
 
-  // Normal dashboard view
+  // ─── Main Dashboard ───
   return (
     <div className="min-h-screen pt-24 pb-20">
       <div className="max-w-2xl mx-auto px-6">
@@ -706,167 +579,83 @@ export function Dashboard() {
         <section className="mb-14">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <p className="text-sm text-muted-foreground">Private Balance</p>
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent/10">
-                <Shield className="h-3 w-3 text-accent" />
+              <p className="text-sm text-muted-foreground">Session Balance</p>
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-accent/10 text-[10px] text-accent font-medium">
+                DEVNET
               </div>
             </div>
             <button
-              onClick={() => fetchBalances(true)}
-              disabled={balancesLoading}
+              onClick={refreshBalances}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              <RefreshCw className={`h-4 w-4 ${balancesLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className="h-4 w-4" />
             </button>
           </div>
 
           <p className="text-5xl font-light tracking-tight mb-6">
             <span className="text-muted-foreground">$</span>
-            {totalShielded.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {availableUsdcBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
 
           {/* Asset pills */}
-          {balances.length > 0 && (
-            <div className="flex flex-wrap gap-3 mb-6">
-              {balances.filter(b => b.amount > 0).map((balance) => (
-                <div key={balance.token.mint} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-sm">
-                  {balance.token.logoURI && (
-                    <img src={balance.token.logoURI} alt="" className="h-4 w-4 rounded-full" />
-                  )}
-                  <span className="font-medium">{balance.amount.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                  <span className="text-muted-foreground">{balance.token.symbol}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Action Tabs */}
-          <div className="inline-flex gap-6 mb-5 border-b border-zinc-800">
-            <button
-              onClick={() => { setShowDeposit(true); setShowWithdraw(false); }}
-              className={`pb-3 text-sm font-medium transition-all relative ${
-                showDeposit
-                  ? 'text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              Deposit
-              {showDeposit && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-100 rounded-full" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setShowWithdraw(true);
-                setShowDeposit(false);
-                if (balances.length > 0) setWithdrawToken(balances[0].token.mint);
-              }}
-              className={`pb-3 text-sm font-medium transition-all relative ${
-                showWithdraw
-                  ? 'text-zinc-100'
-                  : 'text-zinc-500 hover:text-zinc-300'
-              }`}
-            >
-              Withdraw
-              {showWithdraw && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-100 rounded-full" />
-              )}
-            </button>
+          <div className="flex flex-wrap gap-3 mb-6">
+            {availableUsdcBalance > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-sm">
+                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" alt="" className="h-4 w-4 rounded-full" />
+                <span className="font-medium">{availableUsdcBalance.toFixed(2)}</span>
+                <span className="text-muted-foreground">USDC</span>
+              </div>
+            )}
+            {sessionBalance !== null && sessionBalance > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-sm">
+                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="" className="h-4 w-4 rounded-full" />
+                <span className="font-medium">{sessionBalance.toFixed(4)}</span>
+                <span className="text-muted-foreground">SOL</span>
+              </div>
+            )}
           </div>
 
-          {/* Deposit Input */}
-          {showDeposit && (
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border border-border">
-              <div className="flex items-center gap-2 pl-3 pr-2 py-2 text-muted-foreground">
-                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" alt="" className="h-5 w-5 rounded-full" />
-                <span className="text-sm font-medium text-foreground">USDC</span>
-              </div>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                className="flex-1 bg-transparent text-lg font-medium text-mono placeholder:text-muted-foreground/50 focus:outline-none text-right pr-2"
-                autoFocus
-              />
-              <Button
-                onClick={handleDeposit}
-                disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
-                size="sm"
-                className="h-10 px-5 rounded-lg"
-              >
-                {isDepositing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Deposit'
-                )}
-              </Button>
-            </div>
-          )}
+          {/* Deposit */}
+          <button
+            onClick={() => setShowDeposit(!showDeposit)}
+            className={`pb-3 text-sm font-medium transition-all relative mb-5 ${
+              showDeposit ? 'text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
+            }`}
+          >
+            Deposit
+            {showDeposit && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-zinc-100 rounded-full" />}
+          </button>
 
-          {/* Withdraw Input */}
-          {showWithdraw && (
-            <div className="space-y-3">
-              {balances.length > 1 && (
-                <div className="flex gap-2">
-                  {balances.filter(b => b.amount > 0).map((b) => (
-                    <button
-                      key={b.token.mint}
-                      onClick={() => setWithdrawToken(b.token.mint)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                        withdrawToken === b.token.mint
-                          ? 'bg-muted border border-border text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      {b.token.logoURI && <img src={b.token.logoURI} alt="" className="h-4 w-4 rounded-full" />}
-                      <span className="font-medium">{b.token.symbol}</span>
-                    </button>
-                  ))}
+          {showDeposit && (
+            <div>
+              {depositError && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-sm text-destructive">{depositError}</p>
                 </div>
               )}
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border border-border">
                 <div className="flex items-center gap-2 pl-3 pr-2 py-2 text-muted-foreground">
-                  {(() => {
-                    const selectedBalance = balances.find(b => b.token.mint === withdrawToken);
-                    return selectedBalance?.token.logoURI ? (
-                      <img src={selectedBalance.token.logoURI} alt="" className="h-5 w-5 rounded-full" />
-                    ) : null;
-                  })()}
-                  <span className="text-sm font-medium text-foreground">
-                    {balances.find(b => b.token.mint === withdrawToken)?.token.symbol || 'Select'}
-                  </span>
+                  <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" alt="" className="h-5 w-5 rounded-full" />
+                  <span className="text-sm font-medium text-foreground">USDC</span>
                 </div>
                 <input
                   type="number"
                   placeholder="0.00"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
                   className="flex-1 bg-transparent text-lg font-medium text-mono placeholder:text-muted-foreground/50 focus:outline-none text-right pr-2"
                   autoFocus
                 />
                 <Button
-                  onClick={handleWithdraw}
-                  disabled={isWithdrawing || !withdrawAmount || Number(withdrawAmount) <= 0}
+                  onClick={handleDeposit}
+                  disabled={isDepositing || !depositAmount || Number(depositAmount) <= 0}
                   size="sm"
                   className="h-10 px-5 rounded-lg"
                 >
-                  {isWithdrawing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Withdraw'
-                  )}
+                  {isDepositing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Deposit'}
                 </Button>
               </div>
-              <button
-                onClick={() => {
-                  const selectedBalance = balances.find(b => b.token.mint === withdrawToken);
-                  if (selectedBalance) setWithdrawAmount(selectedBalance.amount.toString());
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Max: {balances.find(b => b.token.mint === withdrawToken)?.amount.toFixed(2) || '0.00'}
-              </button>
             </div>
           )}
         </section>
@@ -907,7 +696,7 @@ export function Dashboard() {
             </Button>
           </div>
 
-          {/* Low gas (SOL) warning */}
+          {/* Low gas warning */}
           {!sessionFunded && hasStrategies && (
             <div className="mb-4 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 flex items-center justify-between">
               <div className="flex items-center gap-3 text-sm">
@@ -916,10 +705,7 @@ export function Dashboard() {
                   Low gas — need <span className="font-mono">0.005 SOL</span>, have <span className="font-mono">{sessionBalance?.toFixed(4) || '0'}</span>
                 </span>
               </div>
-              <button
-                onClick={copySessionKey}
-                className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
-              >
+              <button onClick={copySessionKey} className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1">
                 {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 {copied ? 'Copied' : 'Copy address'}
               </button>
@@ -936,7 +722,7 @@ export function Dashboard() {
                 </span>
               </div>
               <button
-                onClick={() => { setShowDeposit(true); setShowWithdraw(false); }}
+                onClick={() => setShowDeposit(true)}
                 className="text-xs text-orange-400 hover:text-orange-300 transition-colors"
               >
                 Add funds
@@ -978,7 +764,7 @@ export function Dashboard() {
           )}
         </section>
 
-        {/* Session Wallet - DCA'd tokens ready to withdraw */}
+        {/* Session Wallet */}
         <SessionWallet sessionPublicKey={sessionKey} />
 
         {/* Recent Activity */}
@@ -1004,7 +790,6 @@ export function Dashboard() {
               ];
 
               activities.sort((a, b) => b.date.getTime() - a.date.getTime());
-
               const totalPages = Math.ceil(activities.length / ACTIVITY_PAGE_SIZE);
               const paginatedActivities = activities.slice(
                 activityPage * ACTIVITY_PAGE_SIZE,
@@ -1021,13 +806,9 @@ export function Dashboard() {
                         const outputToken = getTokenInfo(exec.output_token);
                         const isSuccess = exec.status === 'success';
                         const isPending = exec.status === 'pending';
-
-                        // Style based on status: success=green, pending=amber, failed=red
                         const statusStyles = isSuccess
                           ? 'bg-emerald-500/15 text-emerald-400'
-                          : isPending
-                            ? 'bg-amber-500/15 text-amber-400'
-                            : 'bg-red-500/15 text-red-400';
+                          : isPending ? 'bg-amber-500/15 text-amber-400' : 'bg-red-500/15 text-red-400';
 
                         return (
                           <div key={`trade-${exec.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item">
@@ -1038,21 +819,15 @@ export function Dashboard() {
                               <div>
                                 <p className="text-sm">
                                   <span className="font-medium">{exec.input_amount} {inputToken.symbol}</span>
-                                  <span className="text-muted-foreground mx-1.5">→</span>
+                                  <span className="text-muted-foreground mx-1.5">&rarr;</span>
                                   <span className="font-medium">{exec.output_amount?.toFixed(4) || '—'} {outputToken.symbol}</span>
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(activity.date, 'MMM d, h:mm a')}
-                                </p>
+                                <p className="text-xs text-muted-foreground">{format(activity.date, 'MMM d, h:mm a')}</p>
                               </div>
                             </div>
                             {exec.tx_signature && (
-                              <a
-                                href={getExplorerUrl(exec.tx_signature)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100"
-                              >
+                              <a href={getExplorerUrl(exec.tx_signature)} target="_blank" rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100">
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             )}
@@ -1062,12 +837,11 @@ export function Dashboard() {
                         const tx = activity.data as WalletTransaction;
                         const token = getTokenInfo(tx.token_mint);
                         const isDeposit = activity.type === 'deposit';
-
                         return (
                           <div key={`tx-${tx.id}`} className="flex items-center justify-between py-3 border-b border-border last:border-0 group/item">
                             <div className="flex items-center gap-3">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDeposit ? 'bg-sky-500/15 text-sky-400' : 'bg-orange-500/15 text-orange-400'}`}>
-                                {isDeposit ? <ArrowDownToLine className="h-4 w-4" /> : <ArrowUpFromLine className="h-4 w-4" />}
+                                <ArrowDownToLine className="h-4 w-4" />
                               </div>
                               <div>
                                 <p className="text-sm">
@@ -1075,18 +849,12 @@ export function Dashboard() {
                                   <span className="text-muted-foreground mx-1.5">{tx.amount.toFixed(2)}</span>
                                   <span className="font-medium">{token.symbol}</span>
                                 </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(activity.date, 'MMM d, h:mm a')}
-                                </p>
+                                <p className="text-xs text-muted-foreground">{format(activity.date, 'MMM d, h:mm a')}</p>
                               </div>
                             </div>
                             {tx.tx_signature && (
-                              <a
-                                href={getExplorerUrl(tx.tx_signature)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100"
-                              >
+                              <a href={getExplorerUrl(tx.tx_signature)} target="_blank" rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-accent transition-colors p-1.5 opacity-0 group-hover/item:opacity-100">
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
                             )}
@@ -1095,26 +863,16 @@ export function Dashboard() {
                       }
                     })}
                   </div>
-
-                  {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
-                      <button
-                        onClick={() => setActivityPage(p => Math.max(0, p - 1))}
-                        disabled={activityPage === 0}
-                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
-                      >
-                        ← Newer
+                      <button onClick={() => setActivityPage(p => Math.max(0, p - 1))} disabled={activityPage === 0}
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
+                        &larr; Newer
                       </button>
-                      <span className="text-xs text-muted-foreground/60 tabular-nums">
-                        {activityPage + 1} / {totalPages}
-                      </span>
-                      <button
-                        onClick={() => setActivityPage(p => Math.min(totalPages - 1, p + 1))}
-                        disabled={activityPage >= totalPages - 1}
-                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground transition-colors"
-                      >
-                        Older →
+                      <span className="text-xs text-muted-foreground/60 tabular-nums">{activityPage + 1} / {totalPages}</span>
+                      <button onClick={() => setActivityPage(p => Math.min(totalPages - 1, p + 1))} disabled={activityPage >= totalPages - 1}
+                        className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors">
+                        Older &rarr;
                       </button>
                     </div>
                   )}
@@ -1124,7 +882,7 @@ export function Dashboard() {
           </section>
         )}
 
-        {/* Advanced Section (collapsed by default) */}
+        {/* Advanced Section */}
         <section className="pt-6 border-t border-border">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -1138,13 +896,10 @@ export function Dashboard() {
           {showAdvanced && (
             <div className="mt-4 p-4 rounded-lg bg-card border border-border space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Gas Wallet</span>
+                <span className="text-muted-foreground">Session Wallet</span>
                 <div className="flex items-center gap-2">
                   <span className="text-mono text-xs">{sessionKey?.slice(0, 8)}...{sessionKey?.slice(-6)}</span>
-                  <button
-                    onClick={copySessionKey}
-                    className="text-muted-foreground hover:text-foreground"
-                  >
+                  <button onClick={copySessionKey} className="text-muted-foreground hover:text-foreground">
                     {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </button>
                 </div>
@@ -1153,12 +908,10 @@ export function Dashboard() {
                 <span className="text-muted-foreground">Gas Balance</span>
                 <span className="text-mono">{sessionBalance?.toFixed(4)} SOL</span>
               </div>
-              {(sessionUsdcBalance || 0) > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Pending USDC</span>
-                  <span className="text-mono">{sessionUsdcBalance?.toFixed(2)} USDC</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">USDC Balance</span>
+                <span className="text-mono">{availableUsdcBalance.toFixed(2)} USDC</span>
+              </div>
             </div>
           )}
         </section>
@@ -1219,9 +972,9 @@ function StrategyCard({
             )}
           </div>
           <div>
-            <p className="font-medium">{inputToken.symbol} → {outputToken.symbol}</p>
+            <p className="font-medium">{inputToken.symbol} &rarr; {outputToken.symbol}</p>
             <p className="text-xs text-muted-foreground">
-              {config.amount_per_trade} per trade · every {config.frequency_hours}h
+              {config.amount_per_trade} per trade &middot; every {config.frequency_hours}h
             </p>
           </div>
         </div>
@@ -1267,7 +1020,6 @@ function StrategyCard({
             </div>
           </div>
 
-          {/* Funding note - only shown when underfunded */}
           {isUnderfunded && fundingStatus && (
             <div className="flex items-center gap-2 text-xs text-orange-400/90 mb-4">
               <div className="w-1 h-1 rounded-full bg-orange-400/90" />

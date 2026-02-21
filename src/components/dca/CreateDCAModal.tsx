@@ -19,14 +19,13 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store';
 import { useDCAConfigs } from '@/hooks/useDCAConfigs';
-import { useShieldedBalance } from '@/hooks/useShieldedBalance';
 import {
   SUPPORTED_INPUT_TOKENS,
   SUPPORTED_OUTPUT_TOKENS,
   FREQUENCY_OPTIONS,
 } from '@/lib/solana/constants';
 import { AlertCircle, Loader2 } from 'lucide-react';
-import type { TokenInfo, DCAConfig } from '@/types';
+import type { TokenInfo } from '@/types';
 import { analytics } from '@/lib/analytics';
 
 const MIN_AMOUNT_PER_TRADE = 1;
@@ -34,7 +33,6 @@ const MIN_AMOUNT_PER_TRADE = 1;
 export function CreateDCAModal() {
   const { isCreateModalOpen, setCreateModalOpen } = useAppStore();
   const { createDCA, getActiveConfigs } = useDCAConfigs();
-  const { balances } = useShieldedBalance();
 
   const [inputToken, setInputToken] = useState<TokenInfo | null>(SUPPORTED_INPUT_TOKENS[0]);
   const [outputToken, setOutputToken] = useState<TokenInfo | null>(SUPPORTED_OUTPUT_TOKENS[0]);
@@ -71,10 +69,6 @@ export function CreateDCAModal() {
     return () => clearInterval(interval);
   }, [isGoldOutput]);
 
-  const inputBalance = inputToken
-    ? balances.find((b) => b.token.mint === inputToken.mint)?.amount || 0
-    : 0;
-
   const totalTrades = totalAmount && amountPerTrade
     ? Math.ceil(parseFloat(totalAmount) / parseFloat(amountPerTrade))
     : 0;
@@ -90,15 +84,6 @@ export function CreateDCAModal() {
   const totalEstimatedGold = isGoldOutput && goldPrice && totalAmount
     ? parseFloat(totalAmount) / goldPrice
     : null;
-
-  // Calculate if this new DCA would cause underfunding
-  const activeConfigs = getActiveConfigs();
-  const existingDCARequirement = activeConfigs
-    .filter((c: DCAConfig) => c.input_token === inputToken?.mint)
-    .reduce((sum: number, c: DCAConfig) => sum + c.amount_per_trade, 0);
-  const newPerTradeAmount = parseFloat(amountPerTrade) || 0;
-  const totalRequiredPerRound = existingDCARequirement + newPerTradeAmount;
-  const wouldBeUnderfunded = newPerTradeAmount > 0 && totalRequiredPerRound > inputBalance;
 
   const handleSubmit = async () => {
     if (!inputToken || !outputToken) {
@@ -194,11 +179,6 @@ export function CreateDCAModal() {
                   ))}
                 </SelectContent>
               </Select>
-              {inputToken && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Available: <span className="text-mono">{inputBalance.toFixed(2)}</span>
-                </p>
-              )}
             </div>
 
             <div>
@@ -316,12 +296,6 @@ export function CreateDCAModal() {
                   </>
                 )}
               </div>
-              {wouldBeUnderfunded && (
-                <div className="flex items-center gap-2 text-xs text-orange-400/90 mt-3 pt-3 border-t border-border/50">
-                  <div className="w-1 h-1 rounded-full bg-orange-400/90" />
-                  <span>Balance may not cover all active DCAs</span>
-                </div>
-              )}
             </div>
           )}
 
