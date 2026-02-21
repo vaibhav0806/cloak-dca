@@ -1,4 +1,4 @@
-import { Keypair, PublicKey, Transaction } from '@solana/web3.js';
+import { Keypair, PublicKey, Transaction, Connection } from '@solana/web3.js';
 import {
   getAssociatedTokenAddress,
   createTransferInstruction,
@@ -9,9 +9,31 @@ import {
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { grailService } from './index';
 import { GRAIL_CONFIG } from './config';
-import { ensureGrailUser } from './users';
 import { USDC_MINT } from '@/lib/solana/constants';
 import { getDevnetConnection } from '@/lib/solana/connection';
+
+/**
+ * Confirm a transaction using polling (no WebSocket needed).
+ */
+async function confirmTransactionPolling(
+  connection: Connection,
+  signature: string,
+  maxRetries = 30,
+  retryDelay = 1000
+): Promise<boolean> {
+  for (let i = 0; i < maxRetries; i++) {
+    const status = await connection.getSignatureStatus(signature);
+    if (status?.value?.confirmationStatus === 'confirmed' ||
+        status?.value?.confirmationStatus === 'finalized') {
+      return true;
+    }
+    if (status?.value?.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(status.value.err)}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+  }
+  throw new Error('Transaction confirmation timeout');
+}
 
 interface GrailPurchaseResult {
   txId: string;
@@ -20,16 +42,15 @@ interface GrailPurchaseResult {
 }
 
 /**
- * Execute a GRAIL gold purchase for a user.
+ * Execute a GRAIL gold purchase via partner purchase flow.
  *
  * Flow:
- * 1. Ensure GRAIL user exists
- * 2. Get current gold price
- * 3. Calculate gold amount from USDC
- * 4. Estimate buy to get precise cost
- * 5. Transfer USDC from session wallet → central vault
- * 6. Purchase gold for user via GRAIL
- * 7. Sign and submit transaction
+ * 1. Get current gold price + estimate
+ * 2. Transfer USDC from session wallet → partner PDA (central vault)
+ * 3. Partner purchase (USDC deducted from vault, gold deposited to vault)
+ * 4. Sign with executive authority and submit
+ *
+ * Gold is tracked per-user in our DB (executions table).
  */
 export async function executeGrailPurchase({
   cloakUserId,
@@ -46,29 +67,26 @@ export async function executeGrailPurchase({
 }): Promise<GrailPurchaseResult> {
   const connection = getDevnetConnection();
 
-  // Step 1: Ensure GRAIL user exists
-  const grailUserId = await ensureGrailUser(cloakUserId, walletAddress, supabase);
-  console.log(`Using GRAIL user: ${grailUserId}`);
-
-  // Step 2: Get current gold price
+  // Step 1: Get current gold price
   const priceData = await grailService.getGoldPrice();
   const goldPricePerOunce = priceData.price;
   console.log(`Current gold price: $${goldPricePerOunce}/oz`);
 
-  // Step 3: Calculate gold amount
+  // Calculate gold amount
   const goldAmount = usdcAmount / goldPricePerOunce;
   console.log(`Purchasing ~${goldAmount.toFixed(6)} oz of gold for $${usdcAmount}`);
 
-  // Step 4: Get precise estimate
+  // Get precise estimate
   const estimate = await grailService.estimateBuy(goldAmount);
-  const maxUsdcAmount = estimate.estimatedUsdc * 1.05; // 5% slippage buffer
-  console.log(`Estimated cost: $${estimate.estimatedUsdc}, max: $${maxUsdcAmount}`);
+  const estimatedUsdc = estimate.estimatedUsdcAmount ?? estimate.estimatedUsdc;
+  const maxUsdcAmount = estimatedUsdc * 1.05; // 5% slippage buffer
+  console.log(`Estimated cost: $${estimatedUsdc}, max: $${maxUsdcAmount}`);
 
-  // Step 5: Transfer USDC from session wallet → central vault
+  // Step 2: Transfer USDC from session wallet → central vault (partner PDA)
   const centralVault = new PublicKey(GRAIL_CONFIG.centralVaultWallet);
   const usdcMint = new PublicKey(USDC_MINT);
   const sourceAta = await getAssociatedTokenAddress(usdcMint, sessionKeypair.publicKey);
-  const destAta = await getAssociatedTokenAddress(usdcMint, centralVault);
+  const destAta = await getAssociatedTokenAddress(usdcMint, centralVault, true);
 
   const transferTx = new Transaction();
 
@@ -100,7 +118,7 @@ export async function executeGrailPurchase({
     )
   );
 
-  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  const { blockhash } = await connection.getLatestBlockhash();
   transferTx.recentBlockhash = blockhash;
   transferTx.feePayer = sessionKeypair.publicKey;
   transferTx.sign(sessionKeypair);
@@ -110,27 +128,33 @@ export async function executeGrailPurchase({
     maxRetries: 5,
   });
   console.log(`USDC transfer to vault: ${transferSig}`);
-
-  await connection.confirmTransaction(
-    { signature: transferSig, blockhash, lastValidBlockHeight },
-    'confirmed'
-  );
+  await confirmTransactionPolling(connection, transferSig, 60, 500);
   console.log('USDC transfer confirmed');
 
-  // Step 6: Purchase gold for user
-  const purchaseResult = await grailService.purchaseGoldForUser(
-    grailUserId,
+  // Step 3: Partner purchase (gold bought from vault USDC)
+  const purchaseResult = await grailService.purchaseGoldForPartner(
     goldAmount,
     maxUsdcAmount
   );
 
-  // Step 7: Sign and submit
-  const signedTx = grailService.signTransaction(purchaseResult.transaction, 'versioned');
-  const submitResult = await grailService.submitTransaction(signedTx);
-  console.log(`Gold purchase tx: ${submitResult.txId}`);
+  // Step 4: Sign with executive authority and submit
+  const txBuffer = Buffer.from(purchaseResult.transaction.serializedTx, 'base64');
+  const { VersionedTransaction } = await import('@solana/web3.js');
+  const versionedTx = VersionedTransaction.deserialize(txBuffer);
+  const execKeypair = grailService.getExecutiveKeypairPublic();
+  versionedTx.sign([execKeypair]);
+
+  const txId = await connection.sendTransaction(versionedTx, {
+    skipPreflight: true,
+    maxRetries: 5,
+  });
+  console.log(`Gold purchase tx: ${txId}`);
+
+  await confirmTransactionPolling(connection, txId, 60, 500);
+  console.log(`Gold purchase confirmed: ${txId}`);
 
   return {
-    txId: submitResult.txId,
+    txId,
     goldAmount: purchaseResult.estimatedGoldAmount,
     goldPrice: goldPricePerOunce,
   };

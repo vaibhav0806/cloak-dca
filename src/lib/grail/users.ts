@@ -42,13 +42,13 @@ export async function ensureGrailUser(
   console.log(`Creating GRAIL user for wallet ${walletAddress}`);
   const kycHash = deriveKycHash(walletAddress);
 
-  const createResult = await grailService.createUser(kycHash);
+  const createResult = await grailService.createUser(kycHash, walletAddress);
   console.log(`GRAIL user created: ${createResult.userId}`);
 
   // If the creation returns a transaction, sign and submit it
-  if (createResult.transaction) {
+  if (createResult.transaction?.serializedTx) {
     console.log('Signing user creation transaction...');
-    const signedTx = grailService.signTransaction(createResult.transaction, 'legacy');
+    const signedTx = grailService.signTransaction(createResult.transaction.serializedTx, 'legacy');
     const submitResult = await grailService.submitTransaction(signedTx);
     console.log(`User creation tx submitted: ${submitResult.txId}`);
   }

@@ -323,10 +323,11 @@ export async function GET(request: NextRequest) {
           .update({ status: 'active', updated_at: now.toISOString() })
           .eq('id', dca.id);
 
+        const errMsg = error instanceof Error ? error.message : JSON.stringify(error);
         results.push({
           id: dca.id,
           status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errMsg || `Unknown error: ${String(error)}`,
         });
       }
     }

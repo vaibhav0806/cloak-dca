@@ -15,6 +15,7 @@ interface GoldPriceResponse {
 
 interface EstimateResponse {
   estimatedUsdc: number;
+  estimatedUsdcAmount: number;
   goldAmount: number;
   pricePerOunce: number;
 }
@@ -22,17 +23,38 @@ interface EstimateResponse {
 interface UserResponse {
   userId: string;
   userPda: string;
-  transaction?: string; // base64 serialized legacy transaction
+  transaction?: {
+    serializedTx: string;
+    signingInstructions: {
+      walletType: string;
+      signers: string[];
+      expiresAt: string;
+    };
+  };
 }
 
 interface PurchaseResponse {
-  transaction: string; // base64 serialized versioned transaction
+  transaction: {
+    serializedTx: string;
+    signingInstructions: {
+      walletType: string;
+      signers: string[];
+      expiresAt: string;
+    };
+  };
   estimatedGoldAmount: number;
   estimatedUsdcCost: number;
 }
 
 interface SaleResponse {
-  transaction: string;
+  transaction: {
+    serializedTx: string;
+    signingInstructions: {
+      walletType: string;
+      signers: string[];
+      expiresAt: string;
+    };
+  };
   estimatedGoldAmount: number;
   estimatedUsdcReceived: number;
 }
@@ -67,6 +89,20 @@ class GrailService {
     return Keypair.fromSecretKey(secretKey);
   }
 
+  /** Expose executive authority keypair for co-signing (self-custody) */
+  getExecutiveKeypairPublic(): Keypair {
+    return this.getExecutiveKeypair();
+  }
+
+  /** Unwrap GRAIL's { success, data } response envelope */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private unwrap(json: any): any {
+    if (json && typeof json === 'object' && 'data' in json) {
+      return json.data;
+    }
+    return json;
+  }
+
   async healthCheck(): Promise<{ status: string }> {
     const res = await fetch(`${this.baseUrl}/health`);
     if (!res.ok) throw new Error(`GRAIL health check failed: ${res.status}`);
@@ -77,8 +113,7 @@ class GrailService {
     const res = await fetch(`${this.baseUrl}/api/trading/gold/price`);
     if (!res.ok) throw new Error(`Failed to get gold price: ${res.status}`);
     const json = await res.json();
-    // GRAIL wraps response in { success, data: { price, unit, currency, timestamp } }
-    const data = json.data || json;
+    const data = this.unwrap(json);
     return {
       price: parseFloat(data.price),
       unit: data.unit,
@@ -94,7 +129,8 @@ class GrailService {
       body: JSON.stringify({ goldAmount }),
     });
     if (!res.ok) throw new Error(`Failed to estimate buy: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
   async estimateSell(goldAmount: number): Promise<EstimateResponse> {
@@ -104,20 +140,23 @@ class GrailService {
       body: JSON.stringify({ goldAmount }),
     });
     if (!res.ok) throw new Error(`Failed to estimate sell: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
-  async createUser(kycHash: string): Promise<UserResponse> {
+  async createUser(kycHash: string, userWalletAddress?: string): Promise<UserResponse> {
+    const body: Record<string, string> = { kycHash };
+    if (userWalletAddress) {
+      body.userWalletAddress = userWalletAddress;
+    }
     const res = await fetch(`${this.baseUrl}/api/users`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
-      body: JSON.stringify({
-        partnerId: this.partnerId,
-        kycHash,
-      }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`Failed to create GRAIL user: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
   async getUser(userId: string): Promise<{ userId: string; goldBalance: number; userPda: string }> {
@@ -125,7 +164,8 @@ class GrailService {
       headers: this.getAuthHeaders(),
     });
     if (!res.ok) throw new Error(`Failed to get GRAIL user: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
   async purchaseGoldForUser(
@@ -140,11 +180,28 @@ class GrailService {
         userId,
         goldAmount,
         maxUsdcAmount,
-        partnerId: this.partnerId,
       }),
     });
     if (!res.ok) throw new Error(`Failed to purchase gold: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
+  }
+
+  async purchaseGoldForPartner(
+    goldAmount: number,
+    maxUsdcAmount: number
+  ): Promise<PurchaseResponse> {
+    const res = await fetch(`${this.baseUrl}/api/trading/purchases/partner`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({
+        goldAmount,
+        maxUsdcAmount,
+      }),
+    });
+    if (!res.ok) throw new Error(`Failed to purchase gold (partner): ${res.status} ${await res.text()}`);
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
   async sellGoldForUser(
@@ -159,11 +216,11 @@ class GrailService {
         userId,
         goldAmount,
         minUsdcAmount,
-        partnerId: this.partnerId,
       }),
     });
     if (!res.ok) throw new Error(`Failed to sell gold: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 
   signTransaction(
@@ -189,11 +246,12 @@ class GrailService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        transaction: signedTx.toString('base64'),
+        signedTransaction: signedTx.toString('base64'),
       }),
     });
     if (!res.ok) throw new Error(`Failed to submit transaction: ${res.status} ${await res.text()}`);
-    return res.json();
+    const json = await res.json();
+    return this.unwrap(json);
   }
 }
 
