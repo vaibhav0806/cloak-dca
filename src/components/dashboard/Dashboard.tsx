@@ -28,7 +28,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { TOKENS, USDC_MINT, GOLD_MINT } from '@/lib/solana/constants';
+import { TOKENS, USDC_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';

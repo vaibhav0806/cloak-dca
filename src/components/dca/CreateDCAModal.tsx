@@ -24,7 +24,6 @@ import {
   SUPPORTED_INPUT_TOKENS,
   SUPPORTED_OUTPUT_TOKENS,
   FREQUENCY_OPTIONS,
-  GOLD_MINT,
 } from '@/lib/solana/constants';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo, DCAConfig } from '@/types';
@@ -46,7 +45,7 @@ export function CreateDCAModal() {
   const [error, setError] = useState<string | null>(null);
   const [goldPrice, setGoldPrice] = useState<number | null>(null);
 
-  const isGoldOutput = outputToken?.mint === GOLD_MINT;
+  const isGoldOutput = outputToken?.isGrailAsset === true;
 
   // Fetch gold price when GOLD is selected
   useEffect(() => {

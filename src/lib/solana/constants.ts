@@ -19,7 +19,7 @@ export const TOKENS: Record<string, TokenInfo> = {
   GOLD: {
     symbol: 'GOLD',
     name: 'GRAIL Gold',
-    mint: 'GoLDYYajoSPiRMbRs6MXKBPV8MAfdosfYfG95fqsmawt',
+    mint: 'GOLD', // Internal routing ID — not an on-chain mint. GRAIL API handles all gold operations.
     decimals: 9,
     logoURI: '/gold-icon.png',
     isGrailAsset: true,
