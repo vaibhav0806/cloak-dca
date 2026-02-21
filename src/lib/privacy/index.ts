@@ -13,7 +13,7 @@ import type { TokenInfo, ShieldedBalance } from '@/types';
 export const PRIVACY_CASH_SIGN_MESSAGE = 'Privacy Money account sign in';
 
 // Session keypair derivation message
-export const SESSION_KEYPAIR_MESSAGE = 'Cloak Session Key Derivation';
+export const SESSION_KEYPAIR_MESSAGE = 'Cloak Session Key Derivation v3';
 
 // LocalStorage key prefix for session signatures
 const SESSION_STORAGE_KEY_PREFIX = 'cloak_session_';

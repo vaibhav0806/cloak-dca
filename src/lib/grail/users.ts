@@ -1,6 +1,8 @@
 import { createHash } from 'crypto';
+import { Connection } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { grailService } from './index';
+import { getDevnetConnection } from '@/lib/solana/connection';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -13,8 +15,31 @@ function deriveKycHash(walletAddress: string): string {
 }
 
 /**
+ * Wait for a transaction to confirm using polling.
+ */
+async function waitForConfirmation(
+  connection: Connection,
+  txId: string,
+  maxRetries = 60,
+  retryDelay = 500
+): Promise<void> {
+  for (let i = 0; i < maxRetries; i++) {
+    const status = await connection.getSignatureStatus(txId);
+    if (status?.value?.confirmationStatus === 'confirmed' ||
+        status?.value?.confirmationStatus === 'finalized') {
+      return;
+    }
+    if (status?.value?.err) {
+      throw new Error(`Init tx failed on-chain: ${JSON.stringify(status.value.err)}`);
+    }
+    await new Promise(resolve => setTimeout(resolve, retryDelay));
+  }
+  throw new Error('Init tx confirmation timeout');
+}
+
+/**
  * Ensure a GRAIL user exists for the given Cloak user.
- * Creates one if it doesn't exist yet.
+ * Creates one if it doesn't exist yet, and waits for on-chain PDA initialization.
  * Returns the grail_user_id.
  */
 export async function ensureGrailUser(
@@ -43,14 +68,26 @@ export async function ensureGrailUser(
   const kycHash = deriveKycHash(walletAddress);
 
   const createResult = await grailService.createUser(kycHash, walletAddress);
-  console.log(`GRAIL user created: ${createResult.userId}`);
+  console.log(`GRAIL user created: ${createResult.userId}, PDA: ${createResult.userPda}`);
 
-  // If the creation returns a transaction, sign and submit it
+  // Sign and submit the on-chain initialization transaction
   if (createResult.transaction?.serializedTx) {
     console.log('Signing user creation transaction...');
     const signedTx = grailService.signTransaction(createResult.transaction.serializedTx, 'legacy');
+
+    console.log('Submitting init tx to GRAIL...');
     const submitResult = await grailService.submitTransaction(signedTx);
-    console.log(`User creation tx submitted: ${submitResult.txId}`);
+    console.log(`Init tx submitted: ${submitResult.txId}, status: ${submitResult.status}`);
+
+    // Wait for on-chain confirmation before proceeding
+    if (submitResult.txId) {
+      const connection = getDevnetConnection();
+      console.log('Waiting for on-chain confirmation...');
+      await waitForConfirmation(connection, submitResult.txId);
+      console.log('User PDA initialized on-chain');
+    }
+  } else {
+    console.warn('No init transaction returned — user may not be initialized on-chain');
   }
 
   // Store GRAIL user ID in DB

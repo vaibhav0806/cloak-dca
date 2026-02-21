@@ -44,13 +44,18 @@ interface GrailPurchaseResult {
 /**
  * Execute a GRAIL gold purchase via partner purchase flow.
  *
- * Flow:
- * 1. Get current gold price + estimate
- * 2. Transfer USDC from session wallet → partner PDA (central vault)
- * 3. Partner purchase (USDC deducted from vault, gold deposited to vault)
- * 4. Sign with executive authority and submit
+ * Why partner purchase instead of user purchase:
+ * GRAIL's devnet uses a different USDC mint than Circle's devnet faucet.
+ * User purchases require GRAIL's USDC in the user wallet, which we can't obtain.
+ * Partner purchases work because the vault was pre-funded with GRAIL's USDC.
+ * On mainnet, both will use real USDC and user purchases will work directly.
  *
- * Gold is tracked per-user in our DB (executions table).
+ * Flow:
+ * 1. Get gold price + estimate
+ * 2. Transfer USDC from session wallet → partner vault (locks user funds)
+ * 3. Partner purchase (GRAIL deducts from vault, deposits gold to vault)
+ * 4. Sign with executive authority and submit
+ * 5. Gold attributed to user in our executions table
  */
 export async function executeGrailPurchase({
   cloakUserId,
@@ -82,7 +87,7 @@ export async function executeGrailPurchase({
   const maxUsdcAmount = estimatedUsdc * 1.05; // 5% slippage buffer
   console.log(`Estimated cost: $${estimatedUsdc}, max: $${maxUsdcAmount}`);
 
-  // Step 2: Transfer USDC from session wallet → central vault (partner PDA)
+  // Step 2: Transfer USDC from session wallet → partner vault
   const centralVault = new PublicKey(GRAIL_CONFIG.centralVaultWallet);
   const usdcMint = new PublicKey(USDC_MINT);
   const sourceAta = await getAssociatedTokenAddress(usdcMint, sessionKeypair.publicKey);
@@ -131,7 +136,7 @@ export async function executeGrailPurchase({
   await confirmTransactionPolling(connection, transferSig, 60, 500);
   console.log('USDC transfer confirmed');
 
-  // Step 3: Partner purchase (gold bought from vault USDC)
+  // Step 3: Partner purchase (gold bought from vault's GRAIL USDC)
   const purchaseResult = await grailService.purchaseGoldForPartner(
     goldAmount,
     maxUsdcAmount
