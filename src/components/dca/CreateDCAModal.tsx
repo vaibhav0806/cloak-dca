@@ -28,7 +28,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import type { TokenInfo } from '@/types';
 import { analytics } from '@/lib/analytics';
 
-const MIN_AMOUNT_PER_TRADE = 1;
+const MIN_AMOUNT_PER_TRADE = 0.1; // Devnet: lowered from 1 USDC for testing
 
 export function CreateDCAModal() {
   const { isCreateModalOpen, setCreateModalOpen } = useAppStore();
