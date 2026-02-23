@@ -117,9 +117,12 @@ export async function GET(request: NextRequest) {
             for (const ix of allInstructions) {
               if ('parsed' in ix && ix.parsed?.type === 'transferChecked') {
                 const info = ix.parsed.info;
+                // Authority can be in `authority` or `multisigAuthority` depending on
+                // how the wallet signed (single-sig vs multisig/reference-key pattern)
+                const txAuthority = info.authority || info.multisigAuthority;
                 if (
                   info.mint === USDC_MINT &&
-                  info.authority === deposit.user_wallet &&
+                  txAuthority === deposit.user_wallet &&
                   Number(info.tokenAmount?.amount) >= expectedBaseUnits
                 ) {
                   transferVerified = true;
