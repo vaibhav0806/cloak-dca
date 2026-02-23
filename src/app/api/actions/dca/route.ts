@@ -23,8 +23,21 @@ export async function OPTIONS() {
   return actionCorsOptions();
 }
 
+function getBaseUrl(request: NextRequest): string {
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+  if (forwardedHost) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+  const host = request.headers.get('host');
+  if (host && !host.startsWith('localhost')) {
+    return `https://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+}
+
 export async function GET(request: NextRequest) {
-  const baseUrl = new URL(request.url).origin;
+  const baseUrl = getBaseUrl(request);
   const iconUrl = `${baseUrl}/og-image.png`;
 
   const response = {
