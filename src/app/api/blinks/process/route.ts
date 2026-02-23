@@ -19,6 +19,11 @@ import { getEscrowKeypair, getEscrowPublicKey } from '@/lib/blinks/escrow';
 import { USDC_MINT } from '@/lib/solana/constants';
 import type { BlinkDeposit } from '@/types';
 
+/** Safely parse a number that may come as string from Supabase DECIMAL columns */
+function toNumber(value: number | string): number {
+  return typeof value === 'string' ? parseFloat(value) : value;
+}
+
 const STALE_DEPOSIT_MINUTES = 30;
 const GAS_LAMPORTS = 10_000_000; // 0.01 SOL for session wallet gas
 
@@ -91,12 +96,53 @@ export async function GET(request: NextRequest) {
         if (signatures.length > 0 && !signatures[0].err) {
           const txSignature = signatures[0].signature;
 
-          // Verify the transaction details match
+          // Verify the transaction details match (amount, destination)
           const txInfo = await connection.getParsedTransaction(txSignature, {
             maxSupportedTransactionVersion: 0,
           });
 
           if (txInfo) {
+            // Validate the transfer amount and destination
+            const expectedAmount = toNumber(deposit.amount);
+            const expectedBaseUnits = Math.floor(expectedAmount * 1e6);
+            let transferVerified = false;
+
+            const innerInstructions = txInfo.meta?.innerInstructions || [];
+            const mainInstructions = txInfo.transaction.message.instructions;
+            const allInstructions = [
+              ...mainInstructions,
+              ...innerInstructions.flatMap((ix) => ix.instructions),
+            ];
+
+            for (const ix of allInstructions) {
+              if ('parsed' in ix && ix.parsed?.type === 'transferChecked') {
+                const info = ix.parsed.info;
+                if (
+                  info.mint === USDC_MINT &&
+                  info.authority === deposit.user_wallet &&
+                  Number(info.tokenAmount?.amount) >= expectedBaseUnits
+                ) {
+                  transferVerified = true;
+                  break;
+                }
+              }
+            }
+
+            if (!transferVerified) {
+              console.warn(
+                `Deposit ${deposit.id}: on-chain transfer does not match expected amount/destination, marking failed`
+              );
+              await supabase
+                .from('blink_deposits')
+                .update({
+                  status: 'failed',
+                  error_message: 'On-chain transfer amount does not match deposit record',
+                })
+                .eq('id', deposit.id);
+              results.push({ id: deposit.id, phase: 'confirm', status: 'validation_failed' });
+              continue;
+            }
+
             await supabase
               .from('blink_deposits')
               .update({
@@ -177,72 +223,92 @@ export async function GET(request: NextRequest) {
         const escrowKeypair = getEscrowKeypair();
         const escrowPubkey = getEscrowPublicKey();
         const usdcMint = new PublicKey(USDC_MINT);
-        const amountBaseUnits = Math.floor(deposit.amount * 1e6);
+        const depositAmount = toNumber(deposit.amount);
+        const amountBaseUnits = Math.floor(depositAmount * 1e6);
 
-        // Transfer SOL from escrow to session wallet for gas
-        console.log(
-          `Transferring ${GAS_LAMPORTS / 1e9} SOL to session wallet ${sessionPubkey.toBase58()}`
-        );
-        const solTransferTx = new Transaction().add(
-          SystemProgram.transfer({
-            fromPubkey: escrowPubkey,
-            toPubkey: sessionPubkey,
-            lamports: GAS_LAMPORTS,
-          })
-        );
-        solTransferTx.feePayer = escrowPubkey;
-        solTransferTx.recentBlockhash = (
-          await connection.getLatestBlockhash('confirmed')
-        ).blockhash;
-        solTransferTx.sign(escrowKeypair);
-        const solTxSig = await connection.sendRawTransaction(solTransferTx.serialize());
-        await confirmTransactionPolling(solTxSig);
-        console.log(`SOL transfer confirmed: ${solTxSig}`);
+        // Transfer SOL from escrow to session wallet for gas (idempotent: skip if already funded)
+        const existingSolBalance = await connection.getBalance(sessionPubkey);
+        if (existingSolBalance < GAS_LAMPORTS / 2) {
+          console.log(
+            `Transferring ${GAS_LAMPORTS / 1e9} SOL to session wallet ${sessionPubkey.toBase58()}`
+          );
+          const solTransferTx = new Transaction().add(
+            SystemProgram.transfer({
+              fromPubkey: escrowPubkey,
+              toPubkey: sessionPubkey,
+              lamports: GAS_LAMPORTS,
+            })
+          );
+          solTransferTx.feePayer = escrowPubkey;
+          solTransferTx.recentBlockhash = (
+            await connection.getLatestBlockhash('confirmed')
+          ).blockhash;
+          solTransferTx.sign(escrowKeypair);
+          const solTxSig = await connection.sendRawTransaction(solTransferTx.serialize());
+          await confirmTransactionPolling(solTxSig);
+          console.log(`SOL transfer confirmed: ${solTxSig}`);
+        } else {
+          console.log(`Session wallet already has ${existingSolBalance / 1e9} SOL, skipping gas transfer`);
+        }
 
-        // Transfer USDC from escrow to session wallet
-        console.log(
-          `Transferring ${deposit.amount} USDC to session wallet ${sessionPubkey.toBase58()}`
-        );
+        // Transfer USDC from escrow to session wallet (idempotent: skip if already funded)
         const escrowAta = await getAssociatedTokenAddress(usdcMint, escrowPubkey);
         const sessionAta = await getAssociatedTokenAddress(usdcMint, sessionPubkey);
 
-        const usdcTransferTx = new Transaction();
-        usdcTransferTx.feePayer = escrowPubkey;
-        usdcTransferTx.recentBlockhash = (
-          await connection.getLatestBlockhash('confirmed')
-        ).blockhash;
-
-        // Create session wallet's USDC ATA if needed
+        let existingUsdcBalance = 0;
         try {
-          await getAccount(connection, sessionAta);
+          const accountInfo = await getAccount(connection, sessionAta);
+          existingUsdcBalance = Number(accountInfo.amount);
         } catch {
-          usdcTransferTx.add(
-            createAssociatedTokenAccountInstruction(
-              escrowPubkey,
-              sessionAta,
-              sessionPubkey,
-              usdcMint
-            )
-          );
+          // ATA doesn't exist yet, balance is 0
         }
 
-        usdcTransferTx.add(
-          createTransferCheckedInstruction(
-            escrowAta,
-            usdcMint,
-            sessionAta,
-            escrowPubkey,
-            amountBaseUnits,
-            6
-          )
-        );
-        usdcTransferTx.sign(escrowKeypair);
-        const usdcTxSig = await connection.sendRawTransaction(usdcTransferTx.serialize());
-        await confirmTransactionPolling(usdcTxSig);
-        console.log(`USDC transfer confirmed: ${usdcTxSig}`);
+        if (existingUsdcBalance < amountBaseUnits / 2) {
+          console.log(
+            `Transferring ${depositAmount} USDC to session wallet ${sessionPubkey.toBase58()}`
+          );
+          const usdcTransferTx = new Transaction();
+          usdcTransferTx.feePayer = escrowPubkey;
+          usdcTransferTx.recentBlockhash = (
+            await connection.getLatestBlockhash('confirmed')
+          ).blockhash;
+
+          // Create session wallet's USDC ATA if needed
+          if (existingUsdcBalance === 0) {
+            try {
+              await getAccount(connection, sessionAta);
+            } catch {
+              usdcTransferTx.add(
+                createAssociatedTokenAccountInstruction(
+                  escrowPubkey,
+                  sessionAta,
+                  sessionPubkey,
+                  usdcMint
+                )
+              );
+            }
+          }
+
+          usdcTransferTx.add(
+            createTransferCheckedInstruction(
+              escrowAta,
+              usdcMint,
+              sessionAta,
+              escrowPubkey,
+              amountBaseUnits,
+              6
+            )
+          );
+          usdcTransferTx.sign(escrowKeypair);
+          const usdcTxSig = await connection.sendRawTransaction(usdcTransferTx.serialize());
+          await confirmTransactionPolling(usdcTxSig);
+          console.log(`USDC transfer confirmed: ${usdcTxSig}`);
+        } else {
+          console.log(`Session wallet already has ${existingUsdcBalance / 1e6} USDC, skipping transfer`);
+        }
 
         // Deposit USDC from session wallet into Privacy.cash pool
-        console.log(`Depositing ${deposit.amount} USDC into Privacy.cash pool`);
+        console.log(`Depositing ${depositAmount} USDC into Privacy.cash pool`);
         const privacyClient = await createServerPrivacyClient(rpcUrl, sessionBase64);
         const depositResult = await privacyClient.depositUSDC(amountBaseUnits);
         console.log(`Privacy deposit tx: ${depositResult.tx}`);
@@ -250,15 +316,16 @@ export async function GET(request: NextRequest) {
         console.log('Privacy deposit confirmed');
 
         // Create DCA config
-        const totalTrades = Math.ceil(deposit.amount / deposit.amount_per_trade);
+        const amountPerTrade = toNumber(deposit.amount_per_trade);
+        const totalTrades = Math.ceil(depositAmount / amountPerTrade);
         const { data: dcaConfig, error: dcaError } = await supabase
           .from('dca_configs')
           .insert({
             user_id: userId,
             input_token: USDC_MINT,
             output_token: deposit.output_token,
-            total_amount: deposit.amount,
-            amount_per_trade: deposit.amount_per_trade,
+            total_amount: depositAmount,
+            amount_per_trade: amountPerTrade,
             frequency_hours: deposit.frequency_hours,
             total_trades: totalTrades,
             completed_trades: 0,
