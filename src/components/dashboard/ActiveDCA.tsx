@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pause, Play, X } from 'lucide-react';
+import { MoreHorizontal, Pause, Play, X, Link2 } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { formatDistanceToNow } from 'date-fns';
 import { TOKENS } from '@/lib/solana/constants';
@@ -42,9 +42,17 @@ function DCACard({ config, onPause, onResume, onCancel }: DCACardProps) {
             <span className="text-muted-foreground">→</span>
             <span className="text-title">{outputToken.symbol}</span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            <span className="text-mono">{config.amount_per_trade}</span> per trade
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              <span className="text-mono">{config.amount_per_trade}</span> per trade
+            </p>
+            {config.source === 'blink' && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent/10 text-accent">
+                <Link2 className="h-2.5 w-2.5" />
+                Blink
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
