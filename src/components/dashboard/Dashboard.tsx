@@ -25,7 +25,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { TOKENS, USDC_MINT, GRAIL_USDC_MINT, GOLD_MINT } from '@/lib/solana/constants';
+import { TOKENS, USDC_MINT, GOLD_MINT } from '@/lib/solana/constants';
 import { getExplorerUrl, getDevnetConnection } from '@/lib/solana/connection';
 import type { DCAConfig, Execution, WalletTransaction } from '@/types';
 import { LAMPORTS_PER_SOL, PublicKey, Transaction } from '@solana/web3.js';
@@ -88,11 +88,6 @@ export function Dashboard() {
   // Gold balance state
   const [goldBalance, setGoldBalance] = useState<{ goldAmount: number; usdValue: number; goldPricePerOunce: number } | null>(null);
 
-  // GRAIL USDC balance state
-  const [sessionGrailUsdcBalance, setSessionGrailUsdcBalance] = useState<number | null>(null);
-  const [isFauceting, setIsFauceting] = useState(false);
-  const [faucetResult, setFaucetResult] = useState<string | null>(null);
-
   // Track mounted state
   const isMounted = useRef(true);
   const hasInitializedPrivacy = useRef(false);
@@ -127,29 +122,24 @@ export function Dashboard() {
 
   const sessionFunded = sessionBalance !== null && sessionBalance >= 0.005;
   const availableUsdcBalance = sessionUsdcBalance || 0;
-  const availableGrailUsdcBalance = sessionGrailUsdcBalance || 0;
 
-  // Split active configs by type for funding calculations
+  // Calculate DCA funding: only non-GOLD DCAs need session USDC
+  // GOLD DCAs always show as funded — partner purchase uses vault's GRAIL USDC
   const activeNonGoldConfigs = activeConfigs.filter(c =>
     (c.status === 'active' || c.status === 'executing') && c.output_token !== GOLD_MINT
   );
-  const activeGoldConfigs = activeConfigs.filter(c =>
-    (c.status === 'active' || c.status === 'executing') && c.output_token === GOLD_MINT
-  );
-
-  // Calculate DCA funding: Circle USDC for non-GOLD, GRAIL USDC for GOLD
   const dcaFundingStatus = calculateDCAFundingStatus(activeNonGoldConfigs, availableUsdcBalance);
-  const goldDcaFundingStatus = calculateDCAFundingStatus(activeGoldConfigs, availableGrailUsdcBalance);
-  // Merge both maps
-  for (const [k, v] of goldDcaFundingStatus) dcaFundingStatus.set(k, v);
+  // Mark all GOLD DCAs as funded (vault handles it)
+  for (const config of activeConfigs) {
+    if (config.output_token === GOLD_MINT) {
+      dcaFundingStatus.set(config.id, { funded: true, position: 0, shortfall: 0 });
+    }
+  }
 
   const totalUsdcRequirement = activeNonGoldConfigs.reduce((sum, c) => sum + c.amount_per_trade, 0);
-  const totalGrailUsdcRequirement = activeGoldConfigs.reduce((sum, c) => sum + c.amount_per_trade, 0);
-  const hasUnderfundedDCAs = (availableUsdcBalance < totalUsdcRequirement && activeNonGoldConfigs.length > 0)
-    || (availableGrailUsdcBalance < totalGrailUsdcRequirement && activeGoldConfigs.length > 0);
-  const totalDCARequirement = totalUsdcRequirement + totalGrailUsdcRequirement;
-  const fundingShortfall = Math.max(0, totalUsdcRequirement - availableUsdcBalance)
-    + Math.max(0, totalGrailUsdcRequirement - availableGrailUsdcBalance);
+  const hasUnderfundedDCAs = availableUsdcBalance < totalUsdcRequirement && activeNonGoldConfigs.length > 0;
+  const totalDCARequirement = totalUsdcRequirement;
+  const fundingShortfall = Math.max(0, totalUsdcRequirement - availableUsdcBalance);
 
   // Fetch session key and balances from devnet
   useEffect(() => {
@@ -176,27 +166,11 @@ export function Dashboard() {
           setSessionUsdcBalance(0);
         }
 
-        // Check GRAIL USDC balance
-        try {
-          const grailUsdcMint = new PublicKey(GRAIL_USDC_MINT);
-          const grailAta = await getAssociatedTokenAddress(grailUsdcMint, new PublicKey(key));
-          const grailAccountInfo = await connection.getAccountInfo(grailAta);
-          if (grailAccountInfo && isMounted.current) {
-            const grailData = grailAccountInfo.data;
-            const grailBalance = grailData.readBigUInt64LE(64);
-            setSessionGrailUsdcBalance(Number(grailBalance) / 1e6);
-          } else if (isMounted.current) {
-            setSessionGrailUsdcBalance(0);
-          }
-        } catch {
-          if (isMounted.current) setSessionGrailUsdcBalance(0);
-        }
       } catch (e) {
         console.error('Failed to fetch session balance:', e);
         if (isMounted.current) {
           setSessionBalance(0);
           setSessionUsdcBalance(0);
-          setSessionGrailUsdcBalance(0);
         }
       }
     }).catch(console.error);
@@ -222,17 +196,6 @@ export function Dashboard() {
           setSessionUsdcBalance(Number(usdcBalance) / 1e6);
         }
 
-        // Refresh GRAIL USDC balance
-        try {
-          const grailUsdcMint = new PublicKey(GRAIL_USDC_MINT);
-          const grailAta = await getAssociatedTokenAddress(grailUsdcMint, new PublicKey(sessionKey));
-          const grailAccountInfo = await connection.getAccountInfo(grailAta);
-          if (grailAccountInfo && isMounted.current) {
-            const grailData = grailAccountInfo.data;
-            const grailBalance = grailData.readBigUInt64LE(64);
-            setSessionGrailUsdcBalance(Number(grailBalance) / 1e6);
-          }
-        } catch { /* ignore */ }
       } catch (e) {
         console.error('Failed to refresh session balance:', e);
       }
@@ -407,33 +370,6 @@ export function Dashboard() {
     }
   };
 
-  // Request GRAIL USDC via faucet (triggers user creation + auto-airdrop)
-  const handleFaucet = async () => {
-    if (!publicKey || !sessionKey) return;
-    setIsFauceting(true);
-    setFaucetResult(null);
-    try {
-      const res = await fetch('/api/grail/faucet', {
-        method: 'POST',
-        headers: {
-          'x-wallet-address': publicKey.toBase58(),
-          'x-session-wallet': sessionKey,
-        },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Faucet failed');
-      setFaucetResult(data.alreadyCreated
-        ? 'GRAIL user already exists — USDC was minted on creation'
-        : '1,000,000 gUSDC minted to session wallet!');
-      // Refresh balances after a short delay to let the chain settle
-      setTimeout(refreshBalances, 3000);
-    } catch (error) {
-      setFaucetResult(error instanceof Error ? error.message : 'Faucet failed');
-    } finally {
-      setIsFauceting(false);
-    }
-  };
-
   const copySessionKey = () => {
     if (sessionKey) {
       navigator.clipboard.writeText(sessionKey);
@@ -458,15 +394,6 @@ export function Dashboard() {
         setSessionUsdcBalance(Number(accountInfo.data.readBigUInt64LE(64)) / 1e6);
       }
 
-      // GRAIL USDC
-      try {
-        const grailUsdcMint = new PublicKey(GRAIL_USDC_MINT);
-        const grailAta = await getAssociatedTokenAddress(grailUsdcMint, sessionPubkey);
-        const grailAccountInfo = await connection.getAccountInfo(grailAta);
-        if (grailAccountInfo) {
-          setSessionGrailUsdcBalance(Number(grailAccountInfo.data.readBigUInt64LE(64)) / 1e6);
-        }
-      } catch { /* ignore */ }
     } catch (e) {
       console.error('Failed to refresh:', e);
     }
@@ -695,13 +622,6 @@ export function Dashboard() {
                 <span className="text-muted-foreground">USDC</span>
               </div>
             )}
-            {availableGrailUsdcBalance > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-amber-500/30 text-sm">
-                <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png" alt="" className="h-4 w-4 rounded-full" />
-                <span className="font-medium">{availableGrailUsdcBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
-                <span className="text-amber-400">gUSDC</span>
-              </div>
-            )}
             {sessionBalance !== null && sessionBalance > 0 && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-sm">
                 <img src="https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png" alt="" className="h-4 w-4 rounded-full" />
@@ -710,27 +630,6 @@ export function Dashboard() {
               </div>
             )}
           </div>
-
-          {/* Get Devnet GRAIL USDC (faucet) */}
-          {sessionGrailUsdcBalance !== null && sessionGrailUsdcBalance === 0 && (
-            <div className="mb-6">
-              <button
-                onClick={handleFaucet}
-                disabled={isFauceting}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
-              >
-                {isFauceting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <ArrowDownToLine className="h-3.5 w-3.5" />
-                )}
-                {isFauceting ? 'Requesting gUSDC...' : 'Get Devnet gUSDC (for Gold DCA)'}
-              </button>
-              {faucetResult && (
-                <p className="text-xs text-muted-foreground mt-2">{faucetResult}</p>
-              )}
-            </div>
-          )}
 
           {/* Deposit */}
           <button
@@ -1028,10 +927,6 @@ export function Dashboard() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">USDC Balance</span>
                 <span className="text-mono">{availableUsdcBalance.toFixed(2)} USDC</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">GRAIL USDC Balance</span>
-                <span className="text-mono">{availableGrailUsdcBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })} gUSDC</span>
               </div>
             </div>
           )}

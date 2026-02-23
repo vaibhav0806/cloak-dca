@@ -12,15 +12,19 @@ interface GrailPurchaseResult {
 }
 
 /**
- * Execute a GRAIL gold purchase via user purchase flow.
+ * Execute a GRAIL gold purchase via partner purchase flow.
+ *
+ * Devnet: Partner purchase uses the vault's pre-funded GRAIL USDC.
+ * The session wallet does NOT need GRAIL USDC — only the vault does.
+ * Gold is tracked per-user in Cloak's DB (on-chain attribution via
+ * user purchases will be enabled on mainnet once real USDC is available).
  *
  * Flow:
  * 1. Get gold price + estimate
- * 2. Ensure GRAIL user exists (uses session wallet — triggers devnet USDC airdrop on first creation)
- * 3. purchaseGoldForUser() — gold is owned by user's on-chain PDA
- * 4. Deserialize VersionedTransaction
- * 5. Sign with BOTH sessionKeypair (user/fee payer) AND execKeypair (co-signer)
- * 6. Submit to chain, confirm via polling
+ * 2. Ensure GRAIL user exists (for identity tracking)
+ * 3. Partner purchase (vault's GRAIL USDC → gold)
+ * 4. Sign with executive authority
+ * 5. Submit to chain, confirm via polling
  */
 export async function executeGrailPurchase({
   cloakUserId,
@@ -52,27 +56,24 @@ export async function executeGrailPurchase({
   const maxUsdcAmount = estimatedUsdc * 1.05; // 5% slippage buffer
   console.log(`Estimated cost: $${estimatedUsdc}, max: $${maxUsdcAmount}`);
 
-  // Step 2: Ensure GRAIL user exists (session wallet = userWalletAddress)
+  // Step 2: Ensure GRAIL user exists (for identity tracking, future user purchases)
   const sessionWalletPubkey = sessionKeypair.publicKey.toBase58();
   const grailUserId = await ensureGrailUser(cloakUserId, sessionWalletPubkey, supabase);
   console.log(`GRAIL user ID: ${grailUserId}`);
 
-  // Step 3: Request user purchase transaction from GRAIL
-  const purchaseResult = await grailService.purchaseGoldForUser(
-    grailUserId,
+  // Step 3: Partner purchase — vault's GRAIL USDC is used, no user USDC needed
+  const purchaseResult = await grailService.purchaseGoldForPartner(
     goldAmount,
     maxUsdcAmount
   );
 
-  // Step 4: Deserialize the transaction
+  // Step 4: Deserialize and sign with executive authority
   const txBuffer = Buffer.from(purchaseResult.transaction.serializedTx, 'base64');
   const versionedTx = VersionedTransaction.deserialize(txBuffer);
-
-  // Step 5: Sign with BOTH session keypair (user/fee payer) AND executive authority (co-signer)
   const execKeypair = grailService.getExecutiveKeypairPublic();
-  versionedTx.sign([sessionKeypair, execKeypair]);
+  versionedTx.sign([execKeypair]);
 
-  // Step 6: Submit and confirm
+  // Step 5: Submit and confirm
   const txId = await connection.sendTransaction(versionedTx, {
     skipPreflight: true,
     maxRetries: 5,

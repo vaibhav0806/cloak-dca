@@ -51,9 +51,10 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching SOL balance:', error);
     }
 
-    // Check SPL token balances (cbBTC, ZEC)
+    // Check SPL token balances
     for (const token of SUPPORTED_OUTPUT_TOKENS) {
       if (token.mint === TOKENS.SOL.mint) continue; // Skip SOL, already handled
+      if (token.isGrailAsset) continue; // Skip GRAIL assets (GOLD mint is not a real on-chain address)
 
       try {
         const mint = new PublicKey(token.mint);

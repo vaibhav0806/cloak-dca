@@ -157,9 +157,37 @@ class GrailService {
       headers: this.getAuthHeaders(),
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`Failed to create GRAIL user: ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const text = await res.text();
+      // If user already exists on GRAIL's side, look them up instead of failing
+      if (res.status === 400 && text.includes('already exists') && userWalletAddress) {
+        console.log('GRAIL user already exists, looking up by wallet...');
+        const existing = await this.getUserByWallet(userWalletAddress);
+        if (existing) return existing;
+      }
+      throw new Error(`Failed to create GRAIL user: ${res.status} ${text}`);
+    }
     const json = await res.json();
     return this.unwrap(json);
+  }
+
+  /** Look up a GRAIL user by wallet address via the partner users list */
+  async getUserByWallet(walletAddress: string): Promise<UserResponse | null> {
+    const res = await fetch(
+      `${this.baseUrl}/api/users?partnerId=${this.partnerId}`,
+      { headers: this.getAuthHeaders() }
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = this.unwrap(json);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const user = data.users?.find((u: any) => u.userWalletAddress === walletAddress);
+    if (!user) return null;
+    return {
+      userId: user.userId,
+      userPda: user.userPda,
+      // No transaction needed — user already initialized on-chain
+    };
   }
 
   async getUser(userId: string): Promise<{ userId: string; goldBalance: number; userPda: string }> {

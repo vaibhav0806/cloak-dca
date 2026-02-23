@@ -3,10 +3,9 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { getDevnetConnection } from '@/lib/solana/connection';
 import { addHours } from 'date-fns';
 import { getQuote, getSwapTransaction } from '@/lib/jupiter';
-import { USDC_MINT, SOL_MINT, GOLD_MINT, GRAIL_USDC_MINT } from '@/lib/solana/constants';
+import { USDC_MINT, SOL_MINT, GOLD_MINT } from '@/lib/solana/constants';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { executeGrailPurchase } from '@/lib/grail/execute';
-import { ensureGrailUser } from '@/lib/grail/users';
 import { confirmTransactionPolling } from '@/lib/solana/confirm';
 
 /**
@@ -136,28 +135,16 @@ export async function GET(request: NextRequest) {
         const outputDecimals = getTokenDecimals(outputMint);
         const inputAmount = Math.floor(Number(dca.amount_per_trade) * Math.pow(10, inputDecimals));
 
-        // For GOLD DCAs: ensure GRAIL user exists before balance check.
-        // Creating the user triggers a 1M gUSDC devnet airdrop to the session wallet.
-        if (outputMint === GOLD_MINT) {
-          const sessionWalletAddress = sessionPublicKey.toBase58();
-          const grailUserId = await ensureGrailUser(user.id, sessionWalletAddress, supabase);
-          console.log(`GRAIL user ready: ${grailUserId}`);
-          // Brief pause to let the auto-mint settle on-chain
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-
         // Check session wallet balance directly (no privacy withdrawal on devnet)
-        // For GOLD output, check GRAIL USDC balance (not Circle USDC)
-        const balanceCheckMint = outputMint === GOLD_MINT ? GRAIL_USDC_MINT : inputMint;
+        // GOLD DCAs skip this check — partner purchase uses vault's GRAIL USDC, not user's
         let actualInputAmount = inputAmount;
-        if (balanceCheckMint !== SOL_MINT) {
+        if (outputMint !== GOLD_MINT && inputMint !== SOL_MINT) {
           try {
-            const inputMintPubkey = new PublicKey(balanceCheckMint);
+            const inputMintPubkey = new PublicKey(inputMint);
             const ata = await getAssociatedTokenAddress(inputMintPubkey, sessionPublicKey);
             const tokenAccountInfo = await connection.getTokenAccountBalance(ata);
             const availableBalance = Number(tokenAccountInfo.value.amount);
-            const balanceLabel = balanceCheckMint === GRAIL_USDC_MINT ? 'gUSDC' : balanceCheckMint === USDC_MINT ? 'USDC' : 'tokens';
-            console.log(`Session wallet balance: ${tokenAccountInfo.value.uiAmount} ${balanceLabel}`);
+            console.log(`Session wallet balance: ${tokenAccountInfo.value.uiAmount} ${inputMint === USDC_MINT ? 'USDC' : 'tokens'}`);
 
             if (availableBalance < inputAmount) {
               console.log(`Expected ${dca.amount_per_trade}, have ${tokenAccountInfo.value.uiAmount}`);
@@ -176,8 +163,7 @@ export async function GET(request: NextRequest) {
               throw tokenError;
             }
             console.log(`Could not check token balance: ${(tokenError as Error).message}`);
-            const tokenName = outputMint === GOLD_MINT ? 'GRAIL USDC (gUSDC)' : 'USDC';
-            throw new Error(`Session wallet has no ${tokenName}. Fund the session wallet first.`);
+            throw new Error('Session wallet has no USDC. Fund the session wallet first.');
           }
         }
 
