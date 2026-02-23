@@ -54,52 +54,17 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  // Beta
-  isBetaApproved: false,
+  // Beta (disabled on devnet — everyone has access)
+  isBetaApproved: true,
   isCheckingBeta: false,
 
   checkBetaStatus: async () => {
-    const { walletAddress } = get();
-    if (!walletAddress) return;
-
-    set({ isCheckingBeta: true });
-    try {
-      const response = await fetch('/api/beta/status', {
-        headers: { 'x-wallet-address': walletAddress },
-      });
-      if (response.ok) {
-        const { approved } = await response.json();
-        set({ isBetaApproved: approved, isCheckingBeta: false });
-      } else {
-        set({ isBetaApproved: false, isCheckingBeta: false });
-      }
-    } catch {
-      set({ isBetaApproved: false, isCheckingBeta: false });
-    }
+    // Beta gate disabled on devnet
   },
 
-  redeemBetaCode: async (code: string) => {
-    const { walletAddress } = get();
-    if (!walletAddress) return { success: false, error: 'Wallet not connected' };
-
-    try {
-      const response = await fetch('/api/beta/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, walletAddress }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        set({ isBetaApproved: true });
-        return { success: true };
-      }
-
-      return { success: false, error: data.error || 'Invalid code' };
-    } catch {
-      return { success: false, error: 'Failed to verify code' };
-    }
+  redeemBetaCode: async () => {
+    // Beta gate disabled on devnet
+    return { success: true };
   },
 
   // Wallet
@@ -109,9 +74,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       isConnected: !!address,
       walletAddress: address,
-      // Reset beta and fetch flags when wallet changes
-      isBetaApproved: false,
-      isCheckingBeta: false,
+      // Reset fetch flags when wallet changes
       hasFetchedConfigs: false,
       hasFetchedBalances: false,
       dcaConfigs: address ? get().dcaConfigs : [],
