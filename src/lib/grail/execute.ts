@@ -11,6 +11,13 @@ interface GrailPurchaseResult {
   goldPrice: number;
 }
 
+interface GrailSaleResult {
+  txId: string;
+  goldSold: number;
+  usdcReceived: number;
+  goldPrice: number;
+}
+
 /**
  * Execute a GRAIL gold purchase via partner purchase flow.
  *
@@ -86,6 +93,66 @@ export async function executeGrailPurchase({
   return {
     txId,
     goldAmount: purchaseResult.goldAmount ?? purchaseResult.estimatedGoldAmount ?? goldAmount,
+    goldPrice: goldPricePerOunce,
+  };
+}
+
+/**
+ * Execute a GRAIL gold sale via partner sale flow.
+ *
+ * Sells gold from the partner vault back to GRAIL USDC.
+ * Gold ownership is tracked in Cloak's DB — the caller must verify
+ * the user has sufficient gold balance before calling this.
+ *
+ * Flow:
+ * 1. Get gold price + sale estimate
+ * 2. Partner sale (vault's gold → GRAIL USDC)
+ * 3. Sign with executive authority
+ * 4. Submit to chain, confirm via polling
+ */
+export async function executeGrailSale({
+  goldAmount,
+}: {
+  goldAmount: number; // in troy ounces
+}): Promise<GrailSaleResult> {
+  const connection = getDevnetConnection();
+
+  // Step 1: Get current gold price + estimate
+  const priceData = await grailService.getGoldPrice();
+  const goldPricePerOunce = priceData.price;
+  console.log(`Selling ${goldAmount.toFixed(6)} oz of gold at $${goldPricePerOunce}/oz`);
+
+  const estimate = await grailService.estimateSell(goldAmount);
+  const estimatedUsdc = estimate.estimatedUsdcAmount ?? estimate.estimatedUsdc;
+  const minimumUsdcAmount = estimatedUsdc * 0.95; // 5% slippage buffer
+  console.log(`Estimated USDC: $${estimatedUsdc}, minimum: $${minimumUsdcAmount}`);
+
+  // Step 2: Partner sale — vault's gold is sold
+  const saleResult = await grailService.sellGoldForPartner(
+    goldAmount,
+    minimumUsdcAmount
+  );
+
+  // Step 3: Deserialize and sign with executive authority
+  const txBuffer = Buffer.from(saleResult.transaction.serializedTx, 'base64');
+  const versionedTx = VersionedTransaction.deserialize(txBuffer);
+  const execKeypair = grailService.getExecutiveKeypairPublic();
+  versionedTx.sign([execKeypair]);
+
+  // Step 4: Submit and confirm
+  const txId = await connection.sendTransaction(versionedTx, {
+    skipPreflight: true,
+    maxRetries: 5,
+  });
+  console.log(`Gold sale tx: ${txId}`);
+
+  await confirmTransactionPolling(connection, txId, 60, 500);
+  console.log(`Gold sale confirmed: ${txId}`);
+
+  return {
+    txId,
+    goldSold: goldAmount,
+    usdcReceived: saleResult.estimatedUsdcReceived ?? estimatedUsdc,
     goldPrice: goldPricePerOunce,
   };
 }

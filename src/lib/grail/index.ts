@@ -240,7 +240,7 @@ class GrailService {
   async sellGoldForUser(
     userId: string,
     goldAmount: number,
-    minUsdcAmount: number
+    minimumUsdcAmount: number
   ): Promise<SaleResponse> {
     const res = await fetch(`${this.baseUrl}/api/trading/sales/user`, {
       method: 'POST',
@@ -248,10 +248,27 @@ class GrailService {
       body: JSON.stringify({
         userId,
         goldAmount,
-        minUsdcAmount,
+        minimumUsdcAmount,
       }),
     });
     if (!res.ok) throw new Error(`Failed to sell gold: ${res.status} ${await res.text()}`);
+    const json = await res.json();
+    return this.unwrap(json);
+  }
+
+  async sellGoldForPartner(
+    goldAmount: number,
+    minimumUsdcAmount: number
+  ): Promise<SaleResponse> {
+    const res = await fetch(`${this.baseUrl}/api/trading/sales/partner`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({
+        goldAmount,
+        minimumUsdcAmount,
+      }),
+    });
+    if (!res.ok) throw new Error(`Failed to sell gold (partner): ${res.status} ${await res.text()}`);
     const json = await res.json();
     return this.unwrap(json);
   }
@@ -289,4 +306,4 @@ class GrailService {
 }
 
 export const grailService = new GrailService();
-export type { GoldPriceResponse, EstimateResponse, UserResponse, PurchaseResponse, SubmitResponse };
+export type { GoldPriceResponse, EstimateResponse, UserResponse, PurchaseResponse, SaleResponse, SubmitResponse };

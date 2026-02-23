@@ -88,6 +88,13 @@ export function Dashboard() {
   // Gold balance state
   const [goldBalance, setGoldBalance] = useState<{ goldAmount: number; usdValue: number; goldPricePerOunce: number } | null>(null);
 
+  // Sell gold state
+  const [showSellGold, setShowSellGold] = useState(false);
+  const [sellAmount, setSellAmount] = useState('');
+  const [isSelling, setIsSelling] = useState(false);
+  const [sellError, setSellError] = useState<string | null>(null);
+  const [sellResult, setSellResult] = useState<{ txId: string; usdcReceived: number } | null>(null);
+
   // Track mounted state
   const isMounted = useRef(true);
   const hasInitializedPrivacy = useRef(false);
@@ -399,6 +406,49 @@ export function Dashboard() {
     }
   };
 
+  // Sell gold handler
+  const handleSellGold = async () => {
+    if (!sellAmount || isNaN(Number(sellAmount)) || Number(sellAmount) <= 0 || !publicKey) return;
+
+    setIsSelling(true);
+    setSellError(null);
+    setSellResult(null);
+
+    try {
+      const res = await fetch('/api/grail/sell', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': publicKey.toBase58(),
+        },
+        body: JSON.stringify({ goldAmount: Number(sellAmount) }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to sell gold');
+
+      setSellResult({ txId: data.txId, usdcReceived: data.usdcReceived });
+      setSellAmount('');
+      setShowSellGold(false);
+
+      // Refresh gold balance after sale
+      setTimeout(async () => {
+        try {
+          const balRes = await fetch('/api/grail/balance', {
+            headers: { 'x-wallet-address': publicKey.toBase58() },
+          });
+          if (balRes.ok && isMounted.current) {
+            setGoldBalance(await balRes.json());
+          }
+        } catch { /* ignore */ }
+      }, 2000);
+    } catch (error) {
+      setSellError(error instanceof Error ? error.message : 'Failed to sell gold');
+    } finally {
+      setIsSelling(false);
+    }
+  };
+
   // Loading state — just wait for session balance
   if (sessionBalance === null) {
     return (
@@ -698,6 +748,95 @@ export function Dashboard() {
                   <p className="text-sm text-mono">${goldBalance.goldPricePerOunce.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
+
+              {/* Sell success message */}
+              {sellResult && (
+                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 mb-3 flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="text-green-400">Sold for ${sellResult.usdcReceived.toFixed(2)} USDC</p>
+                    <a
+                      href={getExplorerUrl(sellResult.txId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-green-400/70 hover:text-green-400 flex items-center gap-1 mt-1"
+                    >
+                      <ExternalLink className="h-3 w-3" /> View transaction
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Sell error */}
+              {sellError && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 mb-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-sm text-destructive">{sellError}</p>
+                </div>
+              )}
+
+              {/* Sell form */}
+              {showSellGold ? (
+                <div className="pt-3 border-t border-amber-500/10">
+                  <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border border-border">
+                    <div className="flex items-center gap-2 pl-3 pr-2 py-2">
+                      <span className="text-sm font-medium text-amber-400">GOLD</span>
+                    </div>
+                    <input
+                      type="number"
+                      placeholder="0.0000"
+                      step="0.0001"
+                      value={sellAmount}
+                      onChange={(e) => setSellAmount(e.target.value)}
+                      className="flex-1 bg-transparent text-lg font-medium text-mono placeholder:text-muted-foreground/50 focus:outline-none text-right pr-2"
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => setSellAmount(goldBalance.goldAmount.toFixed(6))}
+                      className="text-xs text-amber-400 hover:text-amber-300 px-2 py-1 rounded bg-amber-500/10"
+                    >
+                      Max
+                    </button>
+                  </div>
+
+                  {sellAmount && Number(sellAmount) > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      ~${(Number(sellAmount) * goldBalance.goldPricePerOunce).toFixed(2)} USDC (estimate)
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      onClick={handleSellGold}
+                      disabled={isSelling || !sellAmount || Number(sellAmount) <= 0 || Number(sellAmount) > goldBalance.goldAmount}
+                      size="sm"
+                      className="gap-1.5 bg-amber-600 hover:bg-amber-700"
+                    >
+                      {isSelling ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Selling...</>
+                      ) : (
+                        'Confirm Sell'
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setShowSellGold(false); setSellAmount(''); setSellError(null); }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-3 border-t border-amber-500/10">
+                  <button
+                    onClick={() => { setShowSellGold(true); setSellResult(null); setSellError(null); }}
+                    className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                  >
+                    Sell Gold
+                  </button>
+                </div>
+              )}
             </div>
           </section>
         )}
