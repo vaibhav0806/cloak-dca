@@ -51,3 +51,5 @@ cache/
 
 # grail integration plan
 GRAIL_INTEGRATION_PLAN.md
+cloak_fundraise.pdf
+supabase/.temp/
