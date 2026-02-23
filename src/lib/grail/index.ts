@@ -268,7 +268,19 @@ class GrailService {
         minimumUsdcAmount,
       }),
     });
-    if (!res.ok) throw new Error(`Failed to sell gold (partner): ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const text = await res.text();
+      let message = `Failed to sell gold: ${res.status}`;
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed.error) {
+          message = parsed.error.includes('SlippageExceeded')
+            ? 'Sale failed — insufficient liquidity on GRAIL devnet. The pool may not have enough USDC to process this sale.'
+            : parsed.error;
+        }
+      } catch { /* use default message */ }
+      throw new Error(message);
+    }
     const json = await res.json();
     return this.unwrap(json);
   }
