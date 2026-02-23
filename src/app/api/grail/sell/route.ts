@@ -51,12 +51,12 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    // Check for prior sales (gold_sold records)
+    // Check for prior sales — include 'pending' to account for in-flight sales
     const { data: sellRecords } = await supabase
       .from('gold_sales')
       .select('gold_amount')
       .eq('user_id', user.id)
-      .eq('status', 'success');
+      .in('status', ['success', 'pending']);
 
     const totalGoldSold = (sellRecords || []).reduce(
       (sum, e) => sum + (Number(e.gold_amount) || 0),
@@ -72,28 +72,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute the sale
-    const result = await executeGrailSale({ goldAmount });
+    // Reserve gold BEFORE executing on-chain to prevent concurrent double-sell.
+    // Insert a 'pending' sale record — this immediately reduces available balance
+    // for any concurrent requests that check the DB.
+    const { data: saleRecord, error: reserveError } = await supabase
+      .from('gold_sales')
+      .insert({
+        user_id: user.id,
+        gold_amount: goldAmount,
+        status: 'pending',
+      })
+      .select('id')
+      .single();
 
-    // Record the sale (table may not exist yet — don't fail the response)
-    const { error: insertError } = await supabase.from('gold_sales').insert({
-      user_id: user.id,
-      gold_amount: result.goldSold,
-      usdc_received: result.usdcReceived,
-      gold_price_at_sale: result.goldPrice,
-      tx_signature: result.txId,
-      status: 'success',
-    });
-    if (insertError) {
-      console.warn('Failed to record sale in gold_sales table:', insertError.message);
+    if (reserveError || !saleRecord) {
+      console.error('Failed to reserve gold for sale:', reserveError?.message);
+      return NextResponse.json(
+        { error: 'Failed to initiate sale' },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({
-      txId: result.txId,
-      goldSold: result.goldSold,
-      usdcReceived: result.usdcReceived,
-      goldPrice: result.goldPrice,
-    });
+    try {
+      // Execute the sale on-chain
+      const result = await executeGrailSale({ goldAmount });
+
+      // Update the pending record with actual results
+      await supabase.from('gold_sales').update({
+        gold_amount: result.goldSold,
+        usdc_received: result.usdcReceived,
+        gold_price_at_sale: result.goldPrice,
+        tx_signature: result.txId,
+        status: 'success',
+      }).eq('id', saleRecord.id);
+
+      return NextResponse.json({
+        txId: result.txId,
+        goldSold: result.goldSold,
+        usdcReceived: result.usdcReceived,
+        goldPrice: result.goldPrice,
+      });
+    } catch (saleError) {
+      // On-chain sale failed — release the reserved gold
+      await supabase.from('gold_sales').update({
+        status: 'failed',
+        error_message: saleError instanceof Error ? saleError.message : 'Unknown error',
+      }).eq('id', saleRecord.id);
+
+      throw saleError; // Re-throw to hit the outer catch
+    }
   } catch (error) {
     console.error('Error selling gold:', error);
     return NextResponse.json(

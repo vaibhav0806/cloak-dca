@@ -6,8 +6,15 @@ import type { CreateDCAParams } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateDCAParams & { walletAddress: string; encryptedData?: string } =
-      await request.json();
+    let body: CreateDCAParams & { walletAddress: string; encryptedData?: string };
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
 
     const {
       inputToken,
@@ -19,7 +26,7 @@ export async function POST(request: NextRequest) {
       encryptedData,
     } = body;
 
-    // Validate input
+    // Validate required fields
     if (!inputToken || !outputToken || !totalAmount || !amountPerTrade || !frequencyHours) {
       return NextResponse.json(
         { error: 'Missing required fields' },
@@ -31,6 +38,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Wallet address required' },
         { status: 401 }
+      );
+    }
+
+    // Validate numeric ranges
+    if (typeof totalAmount !== 'number' || !Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return NextResponse.json(
+        { error: 'Total amount must be a positive number' },
+        { status: 400 }
+      );
+    }
+    if (typeof amountPerTrade !== 'number' || !Number.isFinite(amountPerTrade) || amountPerTrade < 0.1) {
+      return NextResponse.json(
+        { error: 'Amount per trade must be at least 0.1' },
+        { status: 400 }
+      );
+    }
+    if (amountPerTrade > totalAmount) {
+      return NextResponse.json(
+        { error: 'Amount per trade cannot exceed total amount' },
+        { status: 400 }
+      );
+    }
+    if (typeof frequencyHours !== 'number' || !Number.isFinite(frequencyHours) || frequencyHours < 1 || frequencyHours > 8760) {
+      return NextResponse.json(
+        { error: 'Frequency must be between 1 and 8760 hours' },
+        { status: 400 }
+      );
+    }
+    if (inputToken.mint === outputToken.mint) {
+      return NextResponse.json(
+        { error: 'Input and output tokens must be different' },
+        { status: 400 }
       );
     }
 

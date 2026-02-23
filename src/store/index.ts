@@ -150,7 +150,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       console.error('Error fetching DCA configs:', error);
-      set({ isLoadingConfigs: false });
+      set({ isLoadingConfigs: false, hasFetchedConfigs: true });
     }
   },
 

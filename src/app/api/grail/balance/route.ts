@@ -55,19 +55,21 @@ export async function GET(request: NextRequest) {
         (sum, e) => sum + (Number(e.gold_amount) || 0),
         0
       );
+    }
 
-      // Subtract any gold that has been sold
-      const { data: sales } = await supabase
-        .from('gold_sales')
-        .select('gold_amount')
-        .eq('user_id', user.id)
-        .eq('status', 'success');
+    // Always subtract gold that has been sold (applies to both GRAIL API and DB paths)
+    const { data: sales } = await supabase
+      .from('gold_sales')
+      .select('gold_amount')
+      .eq('user_id', user.id)
+      .eq('status', 'success');
 
-      const totalSold = (sales || []).reduce(
-        (sum, e) => sum + (Number(e.gold_amount) || 0),
-        0
-      );
+    const totalSold = (sales || []).reduce(
+      (sum, e) => sum + (Number(e.gold_amount) || 0),
+      0
+    );
 
+    if (totalSold > 0) {
       goldAmount = Math.max(0, goldAmount - totalSold);
     }
 

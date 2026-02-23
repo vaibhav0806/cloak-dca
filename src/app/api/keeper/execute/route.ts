@@ -46,6 +46,21 @@ export async function GET(request: NextRequest) {
     const connection = getDevnetConnection();
     const now = new Date();
 
+    // Recover DCAs stuck in 'executing' for over 30 minutes (e.g. server crash mid-execution)
+    const staleThreshold = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
+    const { data: staleRecovered, error: staleError } = await supabase
+      .from('dca_configs')
+      .update({ status: 'active', updated_at: now.toISOString() })
+      .eq('status', 'executing')
+      .lt('updated_at', staleThreshold)
+      .select('id');
+
+    if (staleError) {
+      console.warn('Failed to recover stale DCAs:', staleError.message);
+    } else if (staleRecovered && staleRecovered.length > 0) {
+      console.log(`Recovered ${staleRecovered.length} stale DCAs stuck in 'executing': ${staleRecovered.map(d => d.id).join(', ')}`);
+    }
+
     // Get DCAs that are due for execution
     const { data: activeDCAs, error: fetchError } = await supabase
       .from('dca_configs')
@@ -73,6 +88,7 @@ export async function GET(request: NextRequest) {
     const results = [];
 
     for (const dca of dcasToExecute) {
+      let executionId: string | null = null;
       try {
         // Atomic lock: set status to 'executing' only if still 'active'
         const { data: lockResult, error: lockError } = await supabase
@@ -103,9 +119,16 @@ export async function GET(request: NextRequest) {
 
         if (execError) {
           console.error(`Error creating execution for DCA ${dca.id}:`, execError);
+          // Reset status so the DCA isn't stuck in 'executing' forever
+          await supabase
+            .from('dca_configs')
+            .update({ status: 'active', updated_at: now.toISOString() })
+            .eq('id', dca.id);
           results.push({ id: dca.id, status: 'error', error: 'Failed to create execution' });
           continue;
         }
+
+        executionId = execution.id;
 
         // Decrypt session keypair
         const user = dca.users as { id: string; wallet_address: string };
@@ -282,15 +305,18 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error(`Error executing DCA ${dca.id}:`, error);
 
-        // Update execution with failure
-        await supabase
-          .from('executions')
-          .update({
+        // Update execution with failure — use executionId for precise targeting if available
+        if (executionId) {
+          await supabase.from('executions').update({
             status: 'failed',
             error_message: error instanceof Error ? error.message : 'Unknown error',
-          })
-          .eq('dca_config_id', dca.id)
-          .eq('trade_number', dca.completed_trades + 1);
+          }).eq('id', executionId);
+        } else {
+          await supabase.from('executions').update({
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+          }).eq('dca_config_id', dca.id).eq('trade_number', dca.completed_trades + 1);
+        }
 
         // Reset status back to 'active' so it can retry next time
         await supabase

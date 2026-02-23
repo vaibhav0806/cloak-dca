@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('wallet_address', walletAddress.toLowerCase())
+      .eq('wallet_address', walletAddress)
       .single();
 
     if (userError || !user) {
@@ -91,14 +91,14 @@ export async function POST(request: NextRequest) {
     let { data: user, error: userError } = await supabase
       .from('users')
       .select('id')
-      .eq('wallet_address', walletAddress.toLowerCase())
+      .eq('wallet_address', walletAddress)
       .single();
 
     if (userError || !user) {
       // Create user if doesn't exist
       const { data: newUser, error: createError } = await supabase
         .from('users')
-        .insert({ wallet_address: walletAddress.toLowerCase() })
+        .insert({ wallet_address: walletAddress })
         .select('id')
         .single();
 
