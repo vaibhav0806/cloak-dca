@@ -25,7 +25,7 @@ function toNumber(value: number | string): number {
 }
 
 const STALE_DEPOSIT_MINUTES = 30;
-const GAS_LAMPORTS = 10_000_000; // 0.01 SOL for session wallet gas
+const GAS_LAMPORTS = 5_000_000; // 0.005 SOL for session wallet gas
 
 /**
  * Confirm a transaction using polling (serverless-friendly)
