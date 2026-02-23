@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     // Look up user
     const { data: user, error: userError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, grail_user_id')
       .eq('wallet_address', walletAddress)
       .single();
 
@@ -29,18 +29,33 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Calculate gold balance from successful executions (partner purchase model)
-    const { data: executions } = await supabase
-      .from('executions')
-      .select('gold_amount, dca_config_id, dca_configs!inner(user_id)')
-      .eq('dca_configs.user_id', user.id)
-      .eq('status', 'success')
-      .not('gold_amount', 'is', null);
+    let goldAmount = 0;
 
-    const goldAmount = (executions || []).reduce(
-      (sum, e) => sum + (Number(e.gold_amount) || 0),
-      0
-    );
+    // Primary: Use GRAIL API for on-chain gold balance (user purchase model)
+    if (user.grail_user_id) {
+      try {
+        const grailUser = await grailService.getUser(user.grail_user_id);
+        goldAmount = Number(grailUser.goldBalance) || 0;
+        console.log(`GRAIL API gold balance for ${user.grail_user_id}: ${goldAmount}`);
+      } catch (grailError) {
+        console.warn('Failed to fetch GRAIL user balance, falling back to DB:', grailError);
+      }
+    }
+
+    // Fallback: aggregate from executions table (legacy partner purchases)
+    if (goldAmount === 0) {
+      const { data: executions } = await supabase
+        .from('executions')
+        .select('gold_amount, dca_config_id, dca_configs!inner(user_id)')
+        .eq('dca_configs.user_id', user.id)
+        .eq('status', 'success')
+        .not('gold_amount', 'is', null);
+
+      goldAmount = (executions || []).reduce(
+        (sum, e) => sum + (Number(e.gold_amount) || 0),
+        0
+      );
+    }
 
     if (goldAmount === 0) {
       return NextResponse.json({

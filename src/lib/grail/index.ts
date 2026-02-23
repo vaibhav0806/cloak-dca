@@ -183,6 +183,8 @@ class GrailService {
         userId,
         goldAmount,
         maxUsdcAmount,
+        co_sign: true,         // Required for self-custody: exec authority co-signs
+        userAsFeePayer: true,   // Session wallet pays SOL gas
       }),
     });
     if (!res.ok) throw new Error(`Failed to purchase gold: ${res.status} ${await res.text()}`);
