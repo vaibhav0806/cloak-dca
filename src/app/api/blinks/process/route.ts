@@ -193,6 +193,27 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
+        // Check if a DCA config already exists for this deposit (idempotency for late-stage retry)
+        const { data: existingDca } = await supabase
+          .from('dca_configs')
+          .select('id')
+          .eq('blink_deposit_id', deposit.id)
+          .single();
+
+        if (existingDca) {
+          // DCA was already created in a previous attempt — just mark as processed
+          await supabase
+            .from('blink_deposits')
+            .update({
+              status: 'processed',
+              dca_config_id: existingDca.id,
+              processed_at: now.toISOString(),
+            })
+            .eq('id', deposit.id);
+          results.push({ id: deposit.id, phase: 'process', status: 'already_processed' });
+          continue;
+        }
+
         // Find or create user
         let userId: string;
         const { data: existingUser } = await supabase
