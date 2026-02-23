@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validOutputMints = SUPPORTED_OUTPUT_TOKENS.map((t) => t.mint);
+    const validOutputMints: string[] = SUPPORTED_OUTPUT_TOKENS.map((t) => t.mint);
     if (!validOutputMints.includes(outputToken)) {
       return withActionCors(
         NextResponse.json({ message: 'Invalid output token' }, { status: 400 })
