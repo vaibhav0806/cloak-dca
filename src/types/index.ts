@@ -14,9 +14,11 @@ export interface DCAConfig {
   frequency_hours: number;
   total_trades: number;
   completed_trades: number;
-  status: 'active' | 'paused' | 'completed' | 'cancelled' | 'executing';
+  status: 'active' | 'paused' | 'completed' | 'cancelled' | 'executing' | 'pending_deposit';
   encrypted_data: string;
   next_execution: string;
+  source: 'dashboard' | 'blink';
+  blink_deposit_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -102,6 +104,24 @@ export interface DCAState {
   createDCA: (params: CreateDCAParams) => Promise<DCAConfig | null>;
   pauseDCA: (id: string) => Promise<void>;
   cancelDCA: (id: string) => Promise<void>;
+}
+
+export interface BlinkDeposit {
+  id: string;
+  user_wallet: string;
+  escrow_wallet: string;
+  amount: number;
+  output_token: string;
+  frequency_hours: number;
+  amount_per_trade: number;
+  tx_signature: string | null;
+  reference_key: string;
+  status: 'pending_confirmation' | 'confirmed' | 'processing' | 'processed' | 'failed';
+  dca_config_id: string | null;
+  error_message: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+  processed_at: string | null;
 }
 
 export interface ShieldedState {
