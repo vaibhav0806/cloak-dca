@@ -13,7 +13,8 @@
     "lint": "eslint",
     "postinstall": "cp node_modules/@lightprotocol/hasher.rs/dist/hasher_wasm_simd_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/ 2>/dev/null || true && cp node_modules/@lightprotocol/hasher.rs/dist/light_wasm_hasher_bg.wasm node_modules/@lightprotocol/hasher.rs/dist/browser-fat/es/ 2>/dev/null || true",
     "remotion:preview": "npx remotion preview remotion/src/index.ts",
-    "remotion:render": "npx remotion render remotion/src/index.ts CloakIntro out/cloak-intro.mp4 --codec h264"
+    "remotion:render": "npx remotion render remotion/src/index.ts CloakIntro out/cloak-intro.mp4 --codec h264",
+    "keeper": "tsx src/scripts/keeper.ts"
   },
   "dependencies": {
     "@lightprotocol/hasher.rs": "^0.2.1",
@@ -57,6 +58,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5"
   }
