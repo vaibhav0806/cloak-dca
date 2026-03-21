@@ -10,6 +10,40 @@
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 
+/**
+ * Suppress stdout/stderr noise from the Privacy.cash SDK in production.
+ * The SDK uses a CLI spinner that floods logs with spinner chars + ANSI codes.
+ */
+async function withSuppressedOutput<T>(fn: () => Promise<T>): Promise<T> {
+  if (process.env.NODE_ENV === 'development') {
+    return fn();
+  }
+
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
+
+  const spinnerPattern = /[\|\/\-\\]?status:|submitting transaction to relayer|\x1b\[\d+m/;
+
+  process.stdout.write = ((...args: Parameters<typeof process.stdout.write>) => {
+    const chunk = typeof args[0] === 'string' ? args[0] : args[0].toString();
+    if (spinnerPattern.test(chunk)) return true;
+    return originalStdoutWrite(...args);
+  }) as typeof process.stdout.write;
+
+  process.stderr.write = ((...args: Parameters<typeof process.stderr.write>) => {
+    const chunk = typeof args[0] === 'string' ? args[0] : args[0].toString();
+    if (spinnerPattern.test(chunk)) return true;
+    return originalStderrWrite(...args);
+  }) as typeof process.stderr.write;
+
+  try {
+    return await fn();
+  } finally {
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+  }
+}
+
 interface DepositResult {
   tx: string;
 }
@@ -51,11 +85,11 @@ export class PrivacyCashServer {
 
       // Pass secret key as Uint8Array to avoid Keypair class version mismatch
       // (SDK bundles its own @solana/web3.js, so instanceof checks fail)
-      this.client = new PrivacyCash({
+      this.client = await withSuppressedOutput(() => Promise.resolve(new PrivacyCash({
         RPC_url: this.rpcUrl,
         owner: this.keypair.secretKey,
         enableDebug: process.env.NODE_ENV === 'development',
-      });
+      })));
       this.initialized = true;
       console.log('Privacy Cash SDK initialized successfully');
     } catch (error) {
@@ -132,7 +166,9 @@ export class PrivacyCashServer {
       throw new Error('Deposit amount must be greater than 0');
     }
     try {
-      const result = await this.client.deposit({ lamports });
+      const result = await withSuppressedOutput<DepositResult>(() =>
+        this.client.deposit({ lamports })
+      );
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -150,7 +186,9 @@ export class PrivacyCashServer {
     }
     try {
       console.log(`Attempting to deposit ${baseUnits} USDC base units from wallet: ${this.keypair.publicKey.toBase58()}`);
-      const result = await this.client.depositUSDC({ base_units: baseUnits });
+      const result = await withSuppressedOutput<DepositResult>(() =>
+        this.client.depositUSDC({ base_units: baseUnits })
+      );
       console.log('Deposit USDC result:', result);
       return result;
     } catch (error) {
@@ -175,10 +213,9 @@ export class PrivacyCashServer {
       throw new Error('Mint address is required');
     }
     try {
-      const result = await this.client.depositSPL({
-        mintAddress,
-        base_units: baseUnits,
-      });
+      const result = await withSuppressedOutput<DepositResult>(() =>
+        this.client.depositSPL({ mintAddress, base_units: baseUnits })
+      );
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -195,10 +232,9 @@ export class PrivacyCashServer {
       throw new Error('Withdrawal amount must be greater than 0');
     }
     try {
-      const result = await this.client.withdraw({
-        lamports,
-        recipientAddress,
-      });
+      const result = await withSuppressedOutput<WithdrawResult>(() =>
+        this.client.withdraw({ lamports, recipientAddress })
+      );
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -215,10 +251,9 @@ export class PrivacyCashServer {
       throw new Error('Withdrawal amount must be greater than 0');
     }
     try {
-      const result = await this.client.withdrawUSDC({
-        base_units: baseUnits,
-        recipientAddress,
-      });
+      const result = await withSuppressedOutput<WithdrawResult>(() =>
+        this.client.withdrawUSDC({ base_units: baseUnits, recipientAddress })
+      );
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -238,11 +273,9 @@ export class PrivacyCashServer {
       throw new Error('Mint address is required');
     }
     try {
-      const result = await this.client.withdrawSPL({
-        mintAddress,
-        base_units: baseUnits,
-        recipientAddress,
-      });
+      const result = await withSuppressedOutput<WithdrawResult>(() =>
+        this.client.withdrawSPL({ mintAddress, base_units: baseUnits, recipientAddress })
+      );
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -7,6 +7,15 @@ import { getQuote, getSwapTransaction } from '@/lib/jupiter';
 import { USDC_MINT, SOL_MINT, CBBTC_MINT, ZEC_MINT } from '@/lib/solana/constants';
 import { Keypair, Connection, PublicKey } from '@solana/web3.js';
 
+const MAX_CONSECUTIVE_FAILURES = 3;
+
+const UNRECOVERABLE_PATTERNS = [
+  'No enough balance to withdraw',
+  'Insufficient SOL for transaction fees',
+  'Balance too low after fees',
+  'not initialized',
+];
+
 /**
  * Get the number of decimals for a token mint
  */
@@ -74,6 +83,12 @@ async function withRetry<T>(
   throw lastError || new Error(`${description} failed after ${maxRetries} attempts`);
 }
 
+function isUnrecoverableError(message: string): boolean {
+  return UNRECOVERABLE_PATTERNS.some(pattern =>
+    message.toLowerCase().includes(pattern.toLowerCase())
+  );
+}
+
 /**
  * Keeper service endpoint
  *
@@ -131,6 +146,28 @@ export async function GET(request: NextRequest) {
 
     for (const dca of dcasToExecute) {
       try {
+        // Check consecutive failures — skip DCAs that have failed too many times
+        const { data: recentExecs } = await supabase
+          .from('executions')
+          .select('status, error_message')
+          .eq('dca_config_id', dca.id)
+          .order('executed_at', { ascending: false })
+          .limit(MAX_CONSECUTIVE_FAILURES);
+
+        if (recentExecs && recentExecs.length >= MAX_CONSECUTIVE_FAILURES) {
+          const allFailed = recentExecs.every(e => e.status === 'failed');
+          if (allFailed) {
+            const lastError = recentExecs[0]?.error_message || 'Unknown';
+            console.log(`DCA ${dca.id} paused: ${MAX_CONSECUTIVE_FAILURES} consecutive failures. Last error: ${lastError}`);
+            await supabase
+              .from('dca_configs')
+              .update({ status: 'paused', updated_at: now.toISOString() })
+              .eq('id', dca.id);
+            results.push({ id: dca.id, status: 'paused', error: `Auto-paused after ${MAX_CONSECUTIVE_FAILURES} consecutive failures` });
+            continue;
+          }
+        }
+
         // Atomic lock: set status to 'executing' only if still 'active'
         // This prevents double execution if keeper runs twice simultaneously
         const { data: lockResult, error: lockError } = await supabase
@@ -373,29 +410,37 @@ export async function GET(request: NextRequest) {
           `Executed trade ${newCompletedTrades}/${dca.total_trades} for DCA ${dca.id}`
         );
       } catch (error) {
-        console.error(`Error executing DCA ${dca.id}:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error(`Error executing DCA ${dca.id}:`, errorMessage);
 
         // Update execution with failure
         await supabase
           .from('executions')
           .update({
             status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error_message: errorMessage,
           })
           .eq('dca_config_id', dca.id)
           .eq('trade_number', dca.completed_trades + 1);
 
-        // Reset status back to 'active' so it can retry next time
-        await supabase
-          .from('dca_configs')
-          .update({ status: 'active', updated_at: now.toISOString() })
-          .eq('id', dca.id);
+        if (isUnrecoverableError(errorMessage)) {
+          // Pause immediately — this DCA needs user intervention
+          console.log(`DCA ${dca.id} paused: unrecoverable error — ${errorMessage}`);
+          await supabase
+            .from('dca_configs')
+            .update({ status: 'paused', updated_at: now.toISOString() })
+            .eq('id', dca.id);
 
-        results.push({
-          id: dca.id,
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+          results.push({ id: dca.id, status: 'paused', error: errorMessage });
+        } else {
+          // Recoverable error — reset to active for retry on next cycle
+          await supabase
+            .from('dca_configs')
+            .update({ status: 'active', updated_at: now.toISOString() })
+            .eq('id', dca.id);
+
+          results.push({ id: dca.id, status: 'error', error: errorMessage });
+        }
       }
     }
 
