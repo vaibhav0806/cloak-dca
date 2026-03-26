@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import type { DCAConfig, Execution, ShieldedBalance, CreateDCAParams } from '@/types';
 
+/**
+ * Toggle beta gating on/off. Keep in sync with src/lib/beta.ts.
+ * When false, all users bypass the beta gate.
+ */
+const BETA_GATING_ENABLED = false;
+
 interface CreateDCAParamsWithSession extends CreateDCAParams {
   sessionKeypairBase64: string;
 }
@@ -61,6 +67,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   checkBetaStatus: async () => {
     const { walletAddress } = get();
     if (!walletAddress) return;
+
+    if (!BETA_GATING_ENABLED) {
+      set({ isBetaApproved: true, isCheckingBeta: false });
+      return;
+    }
 
     set({ isCheckingBeta: true });
     try {
